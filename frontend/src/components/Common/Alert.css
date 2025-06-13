@@ -1,0 +1,137 @@
+/* src/components/Common/Alert.css */
+.alert {
+  position: fixed;
+  top: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 320px;
+  max-width: 500px;
+  padding: 18px 24px;
+  border-radius: 16px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  z-index: 2000;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  backdrop-filter: blur(10px);
+}
+
+.alert.show {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+
+.alert.hide {
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(-50%) translateY(-20px) scale(0.9);
+}
+
+.alert-content {
+  display: flex;
+  align-items: center;
+  flex: 1;
+}
+
+.alert-icon {
+  font-size: 1.4rem;
+  margin-right: 16px;
+  animation: iconBounce 0.6s ease-in-out;
+}
+
+.alert-message {
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.alert-close {
+  background: transparent;
+  border: none;
+  color: inherit;
+  opacity: 0.6;
+  cursor: pointer;
+  font-size: 1.1rem;
+  margin-left: 20px;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+}
+
+.alert-close:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.1);
+  transform: rotate(90deg);
+}
+
+/* Alert types with gradients */
+.alert-success {
+  background: linear-gradient(135deg, rgba(76, 175, 80, 0.95) 0%, rgba(67, 160, 71, 0.95) 100%);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.alert-error {
+  background: linear-gradient(135deg, rgba(244, 67, 54, 0.95) 0%, rgba(229, 57, 53, 0.95) 100%);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.alert-warning {
+  background: linear-gradient(135deg, rgba(255, 152, 0, 0.95) 0%, rgba(251, 140, 0, 0.95) 100%);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.alert-info {
+  background: linear-gradient(135deg, rgba(33, 150, 243, 0.95) 0%, rgba(30, 136, 229, 0.95) 100%);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Icon animations */
+@keyframes iconBounce {
+  0% {
+    transform: scale(0);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Responsive */
+@media (max-width: 576px) {
+  .alert {
+    min-width: 280px;
+    max-width: 90%;
+    padding: 14px 18px;
+    top: 90px;
+  }
+  
+  .alert-icon {
+    font-size: 1.2rem;
+    margin-right: 12px;
+  }
+  
+  .alert-message {
+    font-size: 0.95rem;
+  }
+  
+  .alert-close {
+    width: 26px;
+    height: 26px;
+    font-size: 1rem;
+  }
+}

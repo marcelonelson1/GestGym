@@ -1,0 +1,82 @@
+/* src/components/Common/SearchBar.css */
+.search-bar {
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.search-input-container {
+  display: flex;
+  position: relative;
+  width: 100%;
+}
+
+.search-input {
+  flex: 1;
+  height: 55px;
+  padding: 0 70px 0 25px;
+  border: 2px solid transparent;
+  border-radius: 50px;
+  font-size: 1.05rem;
+  color: #333;
+  background: #f8f9fa;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #667eea;
+  background: white;
+  box-shadow: 0 8px 30px rgba(102, 126, 234, 0.15);
+  transform: translateY(-2px);
+}
+
+.search-input::placeholder {
+  color: #999;
+  font-weight: 400;
+}
+
+.search-button {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 42px;
+  width: 42px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 1.1rem;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.search-button:hover {
+  transform: translateY(-50%) scale(1.1);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.search-button:active {
+  transform: translateY(-50%) scale(0.95);
+}
+
+/* Responsive */
+@media (max-width: 576px) {
+  .search-input {
+    height: 50px;
+    font-size: 1rem;
+    padding: 0 60px 0 20px;
+  }
+  
+  .search-button {
+    height: 38px;
+    width: 38px;
+    right: 6px;
+  }
+}

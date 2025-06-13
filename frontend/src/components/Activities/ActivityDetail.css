@@ -1,0 +1,239 @@
+/* src/components/Activities/ActivityDetail.css */
+.activity-detail-container {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+  }
+  
+  .activity-detail-back {
+    margin-bottom: 1.5rem;
+  }
+  
+  .back-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background-color: transparent;
+    color: #1a73e8;
+    border: none;
+    font-size: 1rem;
+    font-weight: 500;
+    padding: 0;
+    cursor: pointer;
+    transition: color 0.2s ease;
+  }
+  
+  .back-button:hover {
+    color: #0d62c9;
+  }
+  
+  .activity-detail-content {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr;
+    gap: 2.5rem;
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+  }
+  
+  .activity-detail-image-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    min-height: 400px;
+  }
+  
+  .activity-detail-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  
+  .activity-detail-category {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    background-color: #1a73e8;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  .activity-detail-info {
+    padding: 2.5rem;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .activity-detail-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #333;
+    margin: 0 0 1.5rem 0;
+    line-height: 1.2;
+  }
+  
+  .activity-detail-meta {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  
+  .meta-item {
+    display: flex;
+    align-items: center;
+    font-size: 0.95rem;
+    color: #666;
+  }
+  
+  .meta-icon {
+    margin-right: 10px;
+    color: #1a73e8;
+    font-size: 1rem;
+    min-width: 20px;
+  }
+  
+  .activity-detail-description {
+    margin-bottom: 2.5rem;
+  }
+  
+  .activity-detail-description h3 {
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 1rem;
+  }
+  
+  .activity-detail-description p {
+    font-size: 1rem;
+    line-height: 1.6;
+    color: #444;
+    white-space: pre-line;
+  }
+  
+  .activity-detail-actions {
+    margin-top: auto;
+    display: flex;
+    gap: 1rem;
+  }
+  
+  .activity-action-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 24px;
+    font-size: 1rem;
+    font-weight: 500;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+  
+  .activity-action-button.enroll {
+    background-color: #1a73e8;
+    color: white;
+    border: none;
+  }
+  
+  .activity-action-button.enroll:hover {
+    background-color: #0d62c9;
+  }
+  
+  .activity-action-button.cancel {
+    background-color: #f44336;
+    color: white;
+    border: none;
+  }
+  
+  .activity-action-button.cancel:hover {
+    background-color: #d32f2f;
+  }
+  
+  .activity-action-button.login {
+    background-color: #f0f0f0;
+    color: #1a73e8;
+    border: 1px solid #1a73e8;
+  }
+  
+  .activity-action-button.login:hover {
+    background-color: #e8f0fe;
+  }
+  
+  .activity-action-button.edit {
+    background-color: #4caf50;
+    color: white;
+    border: none;
+  }
+  
+  .activity-action-button.edit:hover {
+    background-color: #388e3c;
+  }
+  
+  .activity-action-button.delete {
+    background-color: white;
+    color: #f44336;
+    border: 1px solid #f44336;
+  }
+  
+  .activity-action-button.delete:hover {
+    background-color: #ffebee;
+  }
+  
+  .activity-action-button:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+  
+  .activity-detail-error {
+    text-align: center;
+    padding: 3rem;
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+  }
+  
+  .activity-detail-error p {
+    color: #f44336;
+    font-size: 1.1rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  /* Responsive */
+  @media (max-width: 992px) {
+    .activity-detail-content {
+      grid-template-columns: 1fr;
+    }
+    
+    .activity-detail-image-container {
+      height: 350px;
+      min-height: auto;
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .activity-detail-title {
+      font-size: 1.8rem;
+    }
+    
+    .activity-detail-meta {
+      grid-template-columns: 1fr;
+    }
+    
+    .activity-detail-actions {
+      flex-direction: column;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .activity-detail-info {
+      padding: 1.5rem;
+    }
+  }

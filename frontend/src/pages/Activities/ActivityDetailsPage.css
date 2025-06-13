@@ -1,0 +1,6 @@
+/* src/pages/Activities/ActivityDetailsPage.css */
+.activity-details-page {
+  padding-top: 80px; /* Para compensar el navbar fijo */
+  min-height: 100vh;
+  background-color: #f8f9fa;
+}

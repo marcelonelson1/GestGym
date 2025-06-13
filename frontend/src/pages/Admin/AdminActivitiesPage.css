@@ -1,0 +1,324 @@
+/* src/pages/Admin/AdminActivitiesPage.css */
+.admin-activities-page {
+    padding-top: 80px; /* Para compensar el navbar fijo */
+    min-height: 100vh;
+    background-color: #f8f9fa;
+  }
+  
+  .admin-container {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+  }
+  
+  .admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+  }
+  
+  .admin-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #333;
+  }
+  
+  .create-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background-color: #4caf50;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 10px 20px;
+    font-size: 1rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: background-color 0.3s ease;
+  }
+  
+  .create-button:hover {
+    background-color: #388e3c;
+  }
+  
+  .admin-filters {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  
+  .search-box {
+    flex: 1;
+    position: relative;
+  }
+  
+  .search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #999;
+  }
+  
+  .search-input {
+    width: 100%;
+    padding: 10px 10px 10px 40px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 1rem;
+    color: #333;
+    background-color: white;
+  }
+  
+  .search-input:focus {
+    outline: none;
+    border-color: #1a73e8;
+    box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2);
+  }
+  
+  .category-filter {
+    position: relative;
+  }
+  
+  .filter-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #999;
+  }
+  
+  .filter-select {
+    padding: 10px 10px 10px 40px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 1rem;
+    color: #333;
+    background-color: white;
+    min-width: 200px;
+    appearance: none;
+    cursor: pointer;
+  }
+  
+  .filter-select:focus {
+    outline: none;
+    border-color: #1a73e8;
+    box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2);
+  }
+  
+  /* Tabla de actividades */
+  .activities-table-container {
+    overflow-x: auto;
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  }
+  
+  .activities-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  
+  .activities-table th {
+    background-color: #f5f5f5;
+    padding: 15px;
+    text-align: left;
+    font-weight: 600;
+    color: #333;
+    border-bottom: 1px solid #eee;
+  }
+  
+  .activities-table td {
+    padding: 15px;
+    border-bottom: 1px solid #eee;
+    color: #444;
+  }
+  
+  .activities-table tr:last-child td {
+    border-bottom: none;
+  }
+  
+  .activities-table tr:hover {
+    background-color: #f8f9fa;
+  }
+  
+  .sort-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #333;
+    cursor: pointer;
+  }
+  
+  .sort-button svg {
+    font-size: 0.85rem;
+  }
+  
+  .activity-image-cell {
+    width: 80px;
+  }
+  
+  .activity-thumbnail {
+    width: 60px;
+    height: 60px;
+    border-radius: 6px;
+    object-fit: cover;
+  }
+  
+  .activity-title-cell {
+    min-width: 200px;
+  }
+  
+  .activity-title-wrapper {
+    max-width: 250px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .activity-title-link {
+    color: #1a73e8;
+    text-decoration: none;
+    font-weight: 500;
+  }
+  
+  .activity-title-link:hover {
+    text-decoration: underline;
+  }
+  
+  .actions-cell {
+    display: flex;
+    gap: 8px;
+  }
+  
+  .action-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .action-button.edit {
+    background-color: #e3f2fd;
+    color: #1a73e8;
+  }
+  
+  .action-button.edit:hover {
+    background-color: #bbdefb;
+  }
+  
+  .action-button.delete {
+    background-color: #ffebee;
+    color: #f44336;
+  }
+  
+  .action-button.delete:hover {
+    background-color: #ffcdd2;
+  }
+  
+  /* Mensajes de error y sin actividades */
+  .admin-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 3rem;
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  }
+  
+  .admin-error svg {
+    font-size: 3rem;
+    color: #f44336;
+    margin-bottom: 1.5rem;
+  }
+  
+  .admin-error p {
+    font-size: 1.1rem;
+    color: #666;
+  }
+  
+  .no-activities {
+    text-align: center;
+    padding: 3rem;
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  }
+  
+  .no-activities p {
+    font-size: 1.1rem;
+    color: #666;
+    margin-bottom: 1.5rem;
+  }
+  
+  .clear-filters-button {
+    background-color: #f5f5f5;
+    color: #333;
+    border: none;
+    border-radius: 6px;
+    padding: 10px 20px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  
+  .clear-filters-button:hover {
+    background-color: #e0e0e0;
+  }
+  
+  .create-activity-link {
+    display: inline-block;
+    background-color: #4caf50;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 10px 20px;
+    font-size: 1rem;
+    text-decoration: none;
+    transition: background-color 0.3s ease;
+  }
+  
+  .create-activity-link:hover {
+    background-color: #388e3c;
+  }
+  
+  /* Responsive */
+  @media (max-width: 992px) {
+    .admin-filters {
+      flex-direction: column;
+    }
+    
+    .category-filter {
+      width: 100%;
+    }
+    
+    .filter-select {
+      width: 100%;
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .admin-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+    
+    .create-button {
+      align-self: flex-start;
+    }
+  }

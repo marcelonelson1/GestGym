@@ -1,0 +1,74 @@
+.
+├── App.css
+├── App.js
+├── api
+│   ├── activityService.js
+│   ├── api.js
+│   ├── authService.js
+│   ├── contactService.js
+│   └── enrollmentService.js
+├── components
+│   ├── Activities
+│   │   ├── ActivityCard.css
+│   │   ├── ActivityCard.js
+│   │   ├── ActivityDetail.css
+│   │   ├── ActivityDetail.js
+│   │   ├── ActivityForm.css
+│   │   ├── ActivityForm.js
+│   │   ├── ActivityList.css
+│   │   └── ActivityList.js
+│   ├── Auth
+│   │   ├── AdminRoute.js
+│   │   ├── AuthForms.css
+│   │   ├── LoginForm.js
+│   │   ├── ProtectedRoute.js
+│   │   └── RegisterForm.js
+│   ├── Common
+│   │   ├── Alert.css
+│   │   ├── Alert.js
+│   │   ├── Footer.css
+│   │   ├── Footer.js
+│   │   ├── Loading.css
+│   │   ├── Loading.js
+│   │   ├── Navbar.css
+│   │   ├── Navbar.js
+│   │   ├── SearchBar.css
+│   │   └── SearchBar.js
+│   └── Layout
+│       └── Layout.js
+├── config.js
+├── context
+│   └── AuthContext.js
+├── index.css
+├── index.js
+└── pages
+    ├── Activities
+    │   ├── Activities.css
+    │   ├── Activities.js
+    │   ├── ActivityDetailsPage.css
+    │   ├── ActivityDetailsPage.js
+    │   ├── MyActivitiesPage.css
+    │   └── MyActivitiesPage.js
+    ├── Admin
+    │   ├── AdminActivitiesPage.css
+    │   ├── AdminActivitiesPage.js
+    │   ├── AdminFormPages.css
+    │   ├── AdminMessagesPage.css
+    │   ├── AdminMessagesPage.js
+    │   ├── CreateActivityPage.js
+    │   └── EditActivityPage.js
+    ├── Auth
+    │   ├── AuthPages.css
+    │   ├── ForgotPasswordPage.js
+    │   ├── LoginPage.js
+    │   ├── RegisterPage.js
+    │   └── ResetPasswordPage.js
+    ├── Contact
+    │   ├── ContactPage.css
+    │   └── ContactPage.js
+    ├── Home
+    │   ├── Home.css
+    │   └── Home.js
+    └── NotFoundPage.js
+
+14 directories, 58 files

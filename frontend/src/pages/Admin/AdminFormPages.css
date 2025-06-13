@@ -1,0 +1,44 @@
+/* src/pages/Admin/AdminFormPages.css */
+.admin-form-page {
+    padding-top: 80px; /* Para compensar el navbar fijo */
+    min-height: 100vh;
+    background-color: #f8f9fa;
+  }
+  
+  .error-container {
+    max-width: 600px;
+    margin: 3rem auto;
+    padding: 2rem;
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    text-align: center;
+  }
+  
+  .error-container h2 {
+    color: #f44336;
+    margin-bottom: 1rem;
+    font-size: 1.5rem;
+  }
+  
+  .error-container p {
+    color: #666;
+    margin-bottom: 1.5rem;
+  }
+  
+  .back-button {
+    display: inline-block;
+    background-color: #1a73e8;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    padding: 10px 20px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  
+  .back-button:hover {
+    background-color: #0d62c9;
+  }
