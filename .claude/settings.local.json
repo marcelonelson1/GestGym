@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cat:*)",
+      "Bash(del \"d:\\Gestgym\\backend\\models\\stats.go\")",
+      "Bash(rm:*)",
+      "Bash(docker compose logs:*)",
+      "Bash(curl:*)",
+      "Bash(docker ps:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

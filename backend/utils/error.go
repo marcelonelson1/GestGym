@@ -23,10 +23,6 @@ var (
 	ErrBadRequest       = errors.New("solicitud mal formada")
 	ErrValidationFailed = errors.New("validación fallida")
 	ErrMissingFields    = errors.New("campos requeridos faltantes")
-	ErrPaymentFailed    = errors.New("pago fallido")
-	ErrPaymentExists    = errors.New("pago ya existente")
-	ErrPaymentRejected  = errors.New("pago rechazado")
-	ErrPaymentNotFound  = errors.New("pago no encontrado")
 )
 
 // SendErrorResponse envía una respuesta de error estandarizada

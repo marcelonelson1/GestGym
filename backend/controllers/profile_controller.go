@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"curso-platform/dto"
 	"curso-platform/middleware"
 	"curso-platform/models"
 	"curso-platform/services"
@@ -15,12 +16,12 @@ import (
 
 // ProfileController gestiona las operaciones relacionadas con el perfil de usuario
 type ProfileController struct {
-	userService *services.UserService
-	authService *services.AuthService
+	userService services.IUserService
+	authService services.IAuthService
 }
 
 // NewProfileController crea una nueva instancia del controlador de perfil
-func NewProfileController(userService *services.UserService, authService *services.AuthService) *ProfileController {
+func NewProfileController(userService services.IUserService, authService services.IAuthService) *ProfileController {
 	return &ProfileController{
 		userService: userService,
 		authService: authService,
@@ -49,7 +50,7 @@ func (c *ProfileController) GetProfile(ctx *gin.Context) {
 
 // UpdateProfile actualiza el perfil del usuario
 func (c *ProfileController) UpdateProfile(ctx *gin.Context) {
-	var req models.UpdateProfileRequest
+	var req dto.UpdateProfileRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		utils.SendErrorResponse(ctx, err, http.StatusBadRequest)
 		return
@@ -75,7 +76,7 @@ func (c *ProfileController) UpdateProfile(ctx *gin.Context) {
 
 // ChangePassword cambia la contraseña del usuario
 func (c *ProfileController) ChangePassword(ctx *gin.Context) {
-	var req models.ChangePasswordRequest
+	var req dto.ChangePasswordRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		utils.SendErrorResponse(ctx, err, http.StatusBadRequest)
 		return
@@ -151,11 +152,10 @@ func (c *ProfileController) GetNotificationSettings(ctx *gin.Context) {
 
 	// En una implementación real, obtendríamos esto de la base de datos
 	// Por ahora, devolvemos valores predeterminados
-	settings := models.NotificationSettingsRequest{
+	settings := dto.NotificationSettingsRequest{
 		EmailNotifications: true,
 		NewMessages:        true,
-		NewStudents:        true,
-		SalesReports:       true,
+		NewEnrollments:     true,
 		SystemUpdates:      false,
 	}
 
@@ -167,7 +167,7 @@ func (c *ProfileController) GetNotificationSettings(ctx *gin.Context) {
 
 // UpdateNotificationSettings actualiza las preferencias de notificación
 func (c *ProfileController) UpdateNotificationSettings(ctx *gin.Context) {
-	var req models.NotificationSettingsRequest
+	var req dto.NotificationSettingsRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		utils.SendErrorResponse(ctx, err, http.StatusBadRequest)
 		return

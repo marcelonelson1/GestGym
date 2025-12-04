@@ -1,31 +1,22 @@
 package models
 
 import (
-	
-
 	"gorm.io/gorm"
 )
 
-// ContactMessage representa un mensaje de contacto enviado por un usuario
+// ContactMessage representa un mensaje de contacto enviado por un usuario (capa de persistencia)
+// Solo contiene tags de GORM para mapeo a base de datos
 type ContactMessage struct {
 	gorm.Model
-	Name    string `gorm:"size:100;not null" json:"name"`
-	Email   string `gorm:"size:100;not null" json:"email"`
-	Phone   string `gorm:"size:20" json:"phone"`
-	Message string `gorm:"type:text;not null" json:"message"`
-	Read    bool   `gorm:"default:false" json:"read"`
-	Starred bool   `gorm:"default:false" json:"starred"`
+	Name    string `gorm:"size:100;not null"`
+	Email   string `gorm:"size:100;not null"`
+	Phone   string `gorm:"size:20"`
+	Message string `gorm:"type:text;not null"`
+	Read    bool   `gorm:"default:false"`
+	Starred bool   `gorm:"default:false"`
 }
 
 // TableName especifica el nombre de la tabla para el modelo ContactMessage
 func (ContactMessage) TableName() string {
 	return "contact_messages"
-}
-
-// ContactRequest representa una solicitud de contacto enviada por el cliente
-type ContactRequest struct {
-	Name    string `json:"name" binding:"required"`
-	Email   string `json:"email" binding:"required,email"`
-	Phone   string `json:"phone"`
-	Message string `json:"message" binding:"required"`
 }

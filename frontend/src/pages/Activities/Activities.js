@@ -223,7 +223,10 @@ const Activities = () => {
       
       // Recargar inscripciones para actualizar el estado
       await loadUserEnrollments();
-      
+
+      // Recargar actividades para actualizar el contador de capacidad
+      await loadActivities(searchTerm, selectedCategory);
+
       alert('¡Te has inscrito exitosamente en la actividad!');
       
     } catch (err) {
@@ -263,7 +266,10 @@ const Activities = () => {
       
       // Recargar inscripciones para actualizar el estado
       await loadUserEnrollments();
-      
+
+      // Recargar actividades para actualizar el contador de capacidad
+      await loadActivities(searchTerm, selectedCategory);
+
       alert('Inscripción cancelada exitosamente');
       
     } catch (err) {
@@ -289,15 +295,16 @@ const Activities = () => {
   const getImageUrl = (activity) => {
     // Verificar diferentes posibles campos de imagen
     const imageField = activity.image_url || activity.imageUrl || activity.image;
-    
+
     if (imageField) {
       // Si la URL ya es completa (incluye http), usarla directamente
       if (imageField.startsWith('http')) {
         return imageField;
       }
-      // Si es una ruta relativa, construir la URL completa
-      const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:8080';
-      return `${baseUrl}${imageField.startsWith('/') ? '' : '/'}${imageField}`;
+      // Si es una ruta relativa, usar la misma origin (Nginx hará proxy al backend)
+      // El backend devuelve rutas como "/static/activities/imagen.png"
+      // Nginx en puerto 3000 hará proxy de /static/ al backend:5000
+      return imageField;
     }
     return null;
   };
@@ -513,7 +520,12 @@ const Activities = () => {
                         {activity.capacity && (
                           <div className="detail-item">
                             <FaUsers className="detail-icon" />
-                            <span>Capacidad: {activity.capacity}</span>
+                            <span>
+                              {activity.enrolled !== undefined
+                                ? `${activity.capacity - activity.enrolled} de ${activity.capacity} lugares disponibles`
+                                : `Capacidad: ${activity.capacity}`
+                              }
+                            </span>
                           </div>
                         )}
 

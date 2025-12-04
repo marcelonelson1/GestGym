@@ -25,6 +25,7 @@ import AdminActivitiesPage from './pages/Admin/AdminActivitiesPage';
 import CreateActivityPage from './pages/Admin/CreateActivityPage';
 import EditActivityPage from './pages/Admin/EditActivityPage';
 import AdminMessagesPage from './pages/Admin/AdminMessagesPage';
+import AdminUsersPage from './pages/Admin/AdminUsersPage';
 
 import './App.css';
 
@@ -137,15 +138,23 @@ function App() {
                   </AdminRoute>
                 } 
               />
-              <Route 
-                path="/admin/messages" 
+              <Route
+                path="/admin/messages"
                 element={
                   <AdminRoute>
                     <AdminMessagesPage />
                   </AdminRoute>
-                } 
+                }
               />
-              
+              <Route
+                path="/admin/users"
+                element={
+                  <AdminRoute>
+                    <AdminUsersPage />
+                  </AdminRoute>
+                }
+              />
+
               {/* Ruta para manejar URLs no encontradas */}
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>

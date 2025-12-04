@@ -1,8 +1,8 @@
 package controllers
 
 import (
+	"curso-platform/dto"
 	"curso-platform/middleware"
-	"curso-platform/models"
 	"curso-platform/services"
 	"curso-platform/utils"
 	"net/http"
@@ -13,11 +13,11 @@ import (
 
 // ContactController gestiona las operaciones relacionadas con los mensajes de contacto
 type ContactController struct {
-	contactService *services.ContactService
+	contactService services.IContactService
 }
 
 // NewContactController crea una nueva instancia del controlador de contacto
-func NewContactController(contactService *services.ContactService) *ContactController {
+func NewContactController(contactService services.IContactService) *ContactController {
 	return &ContactController{
 		contactService: contactService,
 	}
@@ -25,7 +25,7 @@ func NewContactController(contactService *services.ContactService) *ContactContr
 
 // ContactHandler procesa un nuevo mensaje de contacto
 func (c *ContactController) ContactHandler(ctx *gin.Context) {
-	var req models.ContactRequest
+	var req dto.ContactRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		utils.SendErrorResponse(ctx, err, http.StatusBadRequest)
 		return

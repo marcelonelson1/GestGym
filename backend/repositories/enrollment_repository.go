@@ -2,7 +2,8 @@ package repositories
 
 import (
 	"curso-platform/models"
-"errors"
+	"errors"
+
 	"gorm.io/gorm"
 )
 
@@ -12,6 +13,8 @@ type EnrollmentRepository interface {
 	FindByUser(userID uint) ([]models.Enrollment, error)
 	FindByActivity(activityID uint) ([]models.Enrollment, error)
 	Create(enrollment *models.Enrollment) (*models.Enrollment, error)
+	Delete(userID, activityID uint) error
+	CountByActivity(activityID uint) (int64, error)
 }
 
 type enrollmentRepository struct {
@@ -58,4 +61,16 @@ func (r *enrollmentRepository) Create(enrollment *models.Enrollment) (*models.En
 		return nil, err
 	}
 	return enrollment, nil
+}
+
+func (r *enrollmentRepository) Delete(userID, activityID uint) error {
+	return r.DB.Where("user_id = ? AND activity_id = ?", userID, activityID).Delete(&models.Enrollment{}).Error
+}
+
+func (r *enrollmentRepository) CountByActivity(activityID uint) (int64, error) {
+	var count int64
+	if err := r.DB.Model(&models.Enrollment{}).Where("activity_id = ? AND status = ?", activityID, "active").Count(&count).Error; err != nil {
+		return 0, err
+	}
+	return count, nil
 }

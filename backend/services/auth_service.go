@@ -1,8 +1,9 @@
 package services
 
 import (
-	"curso-platform/config"
+	"curso-platform/dto"
 	"curso-platform/models"
+	"curso-platform/repositories"
 	"curso-platform/utils"
 	"errors"
 	"log"
@@ -12,18 +13,25 @@ import (
 )
 
 // AuthService maneja la lógica relacionada con la autenticación
-type AuthService struct{}
+type AuthService struct {
+	userRepo repositories.UserRepository
+}
 
 // NewAuthService crea una nueva instancia de AuthService
-func NewAuthService() *AuthService {
-	return &AuthService{}
+func NewAuthService(userRepo repositories.UserRepository) IAuthService {
+	return &AuthService{
+		userRepo: userRepo,
+	}
 }
 
 // Register registra un nuevo usuario
-func (s *AuthService) Register(req models.RegisterRequest) error {
+func (s *AuthService) Register(req dto.RegisterRequest) error {
 	// Verificar si el email ya existe
-	var existingUser models.Usuario
-	if result := config.DB.Where("email = ?", req.Email).First(&existingUser); result.Error == nil {
+	existingUser, err := s.userRepo.FindByEmail(req.Email)
+	if err != nil {
+		return utils.ErrDatabaseError
+	}
+	if existingUser != nil {
 		return utils.ErrEmailExists
 	}
 
@@ -39,16 +47,17 @@ func (s *AuthService) Register(req models.RegisterRequest) error {
 		role = "user" // Por defecto, todos los usuarios son "user"
 	}
 
-	// Crear nuevo usuario - CORREGIDO: Agregado campo Apellido
+	// Crear nuevo usuario
 	user := models.Usuario{
 		Nombre:   req.Nombre,
-		Apellido: req.Apellido, // ✅ AGREGADO: Campo apellido
+		Apellido: req.Apellido,
 		Email:    req.Email,
 		Password: string(hashedPassword),
 		Role:     role,
 	}
 
-	if result := config.DB.Create(&user); result.Error != nil {
+	_, err = s.userRepo.Create(&user)
+	if err != nil {
 		return errors.New("error al crear usuario")
 	}
 
@@ -56,10 +65,13 @@ func (s *AuthService) Register(req models.RegisterRequest) error {
 }
 
 // Login inicia sesión de un usuario
-func (s *AuthService) Login(req models.LoginRequest) (*models.AuthResponse, error) {
+func (s *AuthService) Login(req dto.LoginRequest) (*models.AuthResponse, error) {
 	// Buscar usuario por email
-	var user models.Usuario
-	if result := config.DB.Where("email = ?", req.Email).First(&user); result.Error != nil {
+	user, err := s.userRepo.FindByEmail(req.Email)
+	if err != nil {
+		return nil, utils.ErrDatabaseError
+	}
+	if user == nil {
 		return nil, utils.ErrInvalidLogin
 	}
 
@@ -70,7 +82,7 @@ func (s *AuthService) Login(req models.LoginRequest) (*models.AuthResponse, erro
 
 	// Actualizar última conexión
 	now := time.Now()
-	if err := config.DB.Model(&user).Update("last_login", now).Error; err != nil {
+	if err := s.userRepo.UpdateField(user.ID, "last_login", now); err != nil {
 		// Solo registramos el error, no detenemos el proceso de login
 		log.Printf("Error al actualizar última conexión: %v", err)
 	}
@@ -90,7 +102,7 @@ func (s *AuthService) Login(req models.LoginRequest) (*models.AuthResponse, erro
 	// Preparar respuesta
 	response := &models.AuthResponse{
 		Token: token,
-		User:  user,
+		User:  *user,
 	}
 
 	return response, nil
@@ -104,8 +116,11 @@ func (s *AuthService) RefreshToken(userID uint, role string) (string, error) {
 // ChangeUserRole cambia el rol de un usuario
 func (s *AuthService) ChangeUserRole(userID uint, newRole string) (*models.Usuario, error) {
 	// Verificar que el usuario existe
-	var user models.Usuario
-	if result := config.DB.First(&user, userID); result.Error != nil {
+	user, err := s.userRepo.FindByID(userID)
+	if err != nil {
+		return nil, utils.ErrDatabaseError
+	}
+	if user == nil {
 		return nil, utils.ErrResourceNotFound
 	}
 
@@ -115,26 +130,30 @@ func (s *AuthService) ChangeUserRole(userID uint, newRole string) (*models.Usuar
 	}
 
 	// Actualizar rol del usuario
-	if err := config.DB.Model(&user).Update("role", newRole).Error; err != nil {
+	if err := s.userRepo.UpdateField(userID, "role", newRole); err != nil {
 		return nil, utils.ErrDatabaseError
 	}
 
 	// Obtener usuario actualizado
-	if err := config.DB.First(&user, userID).Error; err != nil {
+	updatedUser, err := s.userRepo.FindByID(userID)
+	if err != nil {
 		return nil, utils.ErrDatabaseError
 	}
 
 	// No enviar contraseña
-	user.Password = ""
+	updatedUser.Password = ""
 
-	return &user, nil
+	return updatedUser, nil
 }
 
 // ChangePassword cambia la contraseña de un usuario
 func (s *AuthService) ChangePassword(userID uint, currentPassword, newPassword string) error {
 	// Buscar usuario
-	var user models.Usuario
-	if result := config.DB.First(&user, userID); result.Error != nil {
+	user, err := s.userRepo.FindByID(userID)
+	if err != nil {
+		return utils.ErrDatabaseError
+	}
+	if user == nil {
 		return utils.ErrUserNotFound
 	}
 
@@ -150,7 +169,7 @@ func (s *AuthService) ChangePassword(userID uint, currentPassword, newPassword s
 	}
 
 	// Actualizar contraseña en la BD
-	if result := config.DB.Model(&user).Update("password", string(hashedPassword)); result.Error != nil {
+	if err := s.userRepo.UpdateField(userID, "password", string(hashedPassword)); err != nil {
 		return utils.ErrDatabaseError
 	}
 

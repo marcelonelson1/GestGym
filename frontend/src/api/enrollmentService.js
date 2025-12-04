@@ -5,31 +5,29 @@ const enrollmentService = {
   // Inscribir usuario en una actividad
   enroll: async (activityId) => {
     try {
-      const response = await api.post('/api/activities/enroll', {
-        activity_id: activityId
-      });
+      const response = await api.post(`/api/enrollments/${activityId}`);
       return response.data;
     } catch (error) {
       console.error('Error enrolling in activity:', error);
       throw error;
     }
   },
-  
+
   // Cancelar inscripción
   cancelEnrollment: async (activityId) => {
     try {
-      const response = await api.delete(`/api/activities/enroll/${activityId}`);
+      const response = await api.delete(`/api/enrollments/${activityId}`);
       return response.data;
     } catch (error) {
       console.error('Error canceling enrollment:', error);
       throw error;
     }
   },
-  
+
   // Obtener inscripciones del usuario actual
   getUserEnrollments: async () => {
     try {
-      const response = await api.get('/api/activities/enrollments');
+      const response = await api.get('/api/enrollments');
       return response.data.data || [];
     } catch (error) {
       console.error('Error fetching user enrollments:', error);

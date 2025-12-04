@@ -33,7 +33,14 @@ func (r *activityRepository) FindAll(filters map[string]interface{}) ([]models.A
 	query := r.DB.Model(&models.Activity{})
 
 	if search, ok := filters["search"]; ok {
-		query = query.Where("title LIKE ?", "%"+search.(string)+"%")
+		searchStr := search.(string)
+		query = query.Where(
+			"id = ? OR title LIKE ? OR instructor LIKE ? OR description LIKE ?",
+			searchStr,
+			"%"+searchStr+"%",
+			"%"+searchStr+"%",
+			"%"+searchStr+"%",
+		)
 	}
 
 	if category, ok := filters["category"]; ok {

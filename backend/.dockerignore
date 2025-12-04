@@ -1,0 +1,52 @@
+# Binarios compilados
+*.exe
+*.dll
+*.so
+*.dylib
+main
+server
+bin/
+
+# Archivos de test
+*_test.go
+*.test
+
+# Dependencias
+vendor/
+
+# Archivos de desarrollo
+.git/
+.gitignore
+.vscode/
+.idea/
+*.md
+README.md
+
+# Archivos temporales
+*.log
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Archivos de configuración local
+.env.local
+.env.development
+.env.test
+
+# Archivos estáticos que se crean en runtime
+static/activities/*
+static/profiles/*
+static/images/*
+!static/activities/.gitkeep
+!static/profiles/.gitkeep
+!static/images/.gitkeep
+
+# Logs
+logs/
+*.log
+app.log
+
+# Documentación
+docs/

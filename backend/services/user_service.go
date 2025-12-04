@@ -1,65 +1,89 @@
 package services
 
 import (
-	"curso-platform/config"
+	"curso-platform/dto"
 	"curso-platform/models"
+	"curso-platform/repositories"
 	"curso-platform/utils"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
-
-	"gorm.io/gorm"
 )
 
 // UserService maneja la lógica relacionada con los usuarios
-type UserService struct{}
+type UserService struct {
+	userRepo repositories.UserRepository
+}
 
 // NewUserService crea una nueva instancia de UserService
-func NewUserService() *UserService {
-	return &UserService{}
+func NewUserService(userRepo repositories.UserRepository) IUserService {
+	return &UserService{
+		userRepo: userRepo,
+	}
 }
 
 // GetUserByID obtiene un usuario por su ID
 func (s *UserService) GetUserByID(id uint) (*models.Usuario, error) {
-	var user models.Usuario
-	if result := config.DB.First(&user, id); result.Error != nil {
-		if result.Error == gorm.ErrRecordNotFound {
-			return nil, utils.ErrResourceNotFound
-		}
+	user, err := s.userRepo.FindByID(id)
+	if err != nil {
 		return nil, utils.ErrDatabaseError
+	}
+	if user == nil {
+		return nil, utils.ErrResourceNotFound
 	}
 
 	// No enviar la contraseña
 	user.Password = ""
 
-	return &user, nil
+	return user, nil
 }
 
-// UpdateProfile actualiza el perfil de un usuario - CORREGIDO: Agregado campo Apellido
-func (s *UserService) UpdateProfile(userID uint, req models.UpdateProfileRequest) (*models.Usuario, error) {
+// GetUserByEmail obtiene un usuario por su email
+func (s *UserService) GetUserByEmail(email string) (*models.Usuario, error) {
+	user, err := s.userRepo.FindByEmail(email)
+	if err != nil {
+		return nil, utils.ErrDatabaseError
+	}
+	if user == nil {
+		return nil, utils.ErrResourceNotFound
+	}
+
+	// No enviar la contraseña
+	user.Password = ""
+
+	return user, nil
+}
+
+// UpdateProfile actualiza el perfil de un usuario
+func (s *UserService) UpdateProfile(userID uint, req dto.UpdateProfileRequest) (*models.Usuario, error) {
 	// Obtener usuario actual
-	var currentUser models.Usuario
-	if result := config.DB.First(&currentUser, userID); result.Error != nil {
+	currentUser, err := s.userRepo.FindByID(userID)
+	if err != nil {
+		return nil, utils.ErrDatabaseError
+	}
+	if currentUser == nil {
 		return nil, utils.ErrResourceNotFound
 	}
 
 	// Verificar si el nuevo email ya existe (si se cambia)
 	if req.Email != "" && req.Email != currentUser.Email {
-		var existingUser models.Usuario
-		if result := config.DB.Where("email = ? AND id != ?", req.Email, userID).First(&existingUser); result.Error == nil {
+		existingUser, err := s.userRepo.FindByEmail(req.Email)
+		if err != nil {
+			return nil, utils.ErrDatabaseError
+		}
+		if existingUser != nil && existingUser.ID != userID {
 			return nil, utils.ErrEmailExists
 		}
 	}
 
-	// Preparar updates - CORREGIDO: Agregado campo Apellido
+	// Preparar updates
 	updates := map[string]interface{}{}
 
 	if req.Nombre != "" {
 		updates["nombre"] = req.Nombre
 	}
 
-	// ✅ AGREGADO: Campo apellido
 	if req.Apellido != "" {
 		updates["apellido"] = req.Apellido
 	}
@@ -73,20 +97,20 @@ func (s *UserService) UpdateProfile(userID uint, req models.UpdateProfileRequest
 	}
 
 	// Actualizar usuario en la BD
-	if result := config.DB.Model(&currentUser).Updates(updates); result.Error != nil {
+	if err := s.userRepo.UpdateFields(userID, updates); err != nil {
 		return nil, utils.ErrDatabaseError
 	}
 
 	// Obtener usuario actualizado
-	var updatedUser models.Usuario
-	if err := config.DB.First(&updatedUser, userID).Error; err != nil {
+	updatedUser, err := s.userRepo.FindByID(userID)
+	if err != nil {
 		return nil, utils.ErrDatabaseError
 	}
 
 	// No enviar contraseña en la respuesta
 	updatedUser.Password = ""
 
-	return &updatedUser, nil
+	return updatedUser, nil
 }
 
 // UploadProfileImage sube una nueva imagen de perfil para el usuario
@@ -148,40 +172,30 @@ func (s *UserService) UploadProfileImage(userID uint, file *os.File, filename st
 	imageURL := "/static/profiles/" + newFilename
 
 	// Actualizar URL de imagen en la BD
-	if err := config.DB.Model(&models.Usuario{}).Where("id = ?", userID).Update("image_url", imageURL).Error; err != nil {
+	if err := s.userRepo.UpdateField(userID, "image_url", imageURL); err != nil {
 		return "", utils.ErrDatabaseError
 	}
 
 	return imageURL, nil
 }
 
-// ListUsers obtiene una lista paginada de usuarios - CORREGIDO: Búsqueda incluye apellido
+// ListUsers obtiene una lista paginada de usuarios
 func (s *UserService) ListUsers(page, limit int, role, search string) ([]models.Usuario, int64, error) {
-	var users []models.Usuario
-	query := config.DB.Order("created_at desc")
-
 	// Calcular offset para paginación
 	offset := (page - 1) * limit
 
-	// Filtrado por rol
+	// Preparar filtros
+	filters := map[string]interface{}{}
 	if role != "" {
-		query = query.Where("role = ?", role)
+		filters["role"] = role
 	}
-
-	// Búsqueda por nombre, apellido o email - CORREGIDO: Agregada búsqueda por apellido
 	if search != "" {
-		query = query.Where("nombre LIKE ? OR apellido LIKE ? OR email LIKE ?",
-			"%"+search+"%", "%"+search+"%", "%"+search+"%")
-	}
-
-	// Contar total de registros para paginación
-	var total int64
-	if err := query.Model(&models.Usuario{}).Count(&total).Error; err != nil {
-		return nil, 0, utils.ErrDatabaseError
+		filters["search"] = search
 	}
 
 	// Obtener usuarios con paginación
-	if err := query.Limit(limit).Offset(offset).Find(&users).Error; err != nil {
+	users, total, err := s.userRepo.FindAll(filters, limit, offset)
+	if err != nil {
 		return nil, 0, utils.ErrDatabaseError
 	}
 
@@ -196,8 +210,11 @@ func (s *UserService) ListUsers(page, limit int, role, search string) ([]models.
 // DeleteUser elimina un usuario
 func (s *UserService) DeleteUser(id uint, adminID uint) error {
 	// Verificar si el usuario existe
-	var user models.Usuario
-	if err := config.DB.First(&user, id).Error; err != nil {
+	user, err := s.userRepo.FindByID(id)
+	if err != nil {
+		return utils.ErrDatabaseError
+	}
+	if user == nil {
 		return utils.ErrResourceNotFound
 	}
 
@@ -207,7 +224,7 @@ func (s *UserService) DeleteUser(id uint, adminID uint) error {
 	}
 
 	// Eliminar usuario (borrado en cascada configurado en la base de datos)
-	if err := config.DB.Delete(&user).Error; err != nil {
+	if err := s.userRepo.Delete(id); err != nil {
 		return utils.ErrDatabaseError
 	}
 

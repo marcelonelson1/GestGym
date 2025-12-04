@@ -1,25 +1,28 @@
 package services
 
 import (
-	"curso-platform/config"
+	"curso-platform/dto"
 	"curso-platform/models"
+	"curso-platform/repositories"
 	"curso-platform/utils"
 	"fmt"
 	"log"
-
-	"gorm.io/gorm"
 )
 
 // ContactService maneja la lógica relacionada con los mensajes de contacto
-type ContactService struct{}
+type ContactService struct {
+	contactRepo repositories.ContactRepository
+}
 
 // NewContactService crea una nueva instancia de ContactService
-func NewContactService() *ContactService {
-	return &ContactService{}
+func NewContactService(contactRepo repositories.ContactRepository) IContactService {
+	return &ContactService{
+		contactRepo: contactRepo,
+	}
 }
 
 // SendContactMessage guarda un mensaje de contacto y envía email de notificación
-func (s *ContactService) SendContactMessage(req models.ContactRequest) error {
+func (s *ContactService) SendContactMessage(req dto.ContactRequest) error {
 	// Guardar en la base de datos
 	message := models.ContactMessage{
 		Name:    req.Name,
@@ -28,7 +31,8 @@ func (s *ContactService) SendContactMessage(req models.ContactRequest) error {
 		Message: req.Message,
 	}
 
-	if err := config.DB.Create(&message).Error; err != nil {
+	_, err := s.contactRepo.Create(&message)
+	if err != nil {
 		log.Printf("Error guardando mensaje: %v", err)
 		return utils.ErrDatabaseError
 	}
@@ -44,9 +48,8 @@ func (s *ContactService) SendContactMessage(req models.ContactRequest) error {
 
 // GetAllMessages obtiene todos los mensajes de contacto
 func (s *ContactService) GetAllMessages() ([]models.ContactMessage, error) {
-	var messages []models.ContactMessage
-
-	if err := config.DB.Order("created_at DESC").Find(&messages).Error; err != nil {
+	messages, err := s.contactRepo.FindAll()
+	if err != nil {
 		return nil, utils.ErrDatabaseError
 	}
 
@@ -55,52 +58,53 @@ func (s *ContactService) GetAllMessages() ([]models.ContactMessage, error) {
 
 // GetMessageByID obtiene un mensaje de contacto por su ID
 func (s *ContactService) GetMessageByID(id uint) (*models.ContactMessage, error) {
-	var message models.ContactMessage
-	if err := config.DB.First(&message, id).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return nil, utils.ErrResourceNotFound
-		}
+	message, err := s.contactRepo.FindByID(id)
+	if err != nil {
 		return nil, utils.ErrDatabaseError
+	}
+	if message == nil {
+		return nil, utils.ErrResourceNotFound
 	}
 
 	// Marcar como leído si no lo estaba
 	if !message.Read {
-		config.DB.Model(&message).Update("read", true)
+		s.contactRepo.UpdateField(id, "read", true)
 	}
 
-	return &message, nil
+	return message, nil
 }
 
 // UpdateMessageStatus actualiza el estado (leído/destacado) de un mensaje
 func (s *ContactService) UpdateMessageStatus(id uint, action string) (*models.ContactMessage, error) {
-	var message models.ContactMessage
-	if err := config.DB.First(&message, id).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return nil, utils.ErrResourceNotFound
-		}
+	message, err := s.contactRepo.FindByID(id)
+	if err != nil {
 		return nil, utils.ErrDatabaseError
+	}
+	if message == nil {
+		return nil, utils.ErrResourceNotFound
 	}
 
 	switch action {
 	case "read":
-		config.DB.Model(&message).Update("read", !message.Read)
+		s.contactRepo.UpdateField(id, "read", !message.Read)
 	case "star":
-		config.DB.Model(&message).Update("starred", !message.Starred)
+		s.contactRepo.UpdateField(id, "starred", !message.Starred)
 	default:
 		return nil, utils.ErrInvalidRequest
 	}
 
 	// Recuperar el mensaje actualizado
-	if err := config.DB.First(&message, id).Error; err != nil {
+	updatedMessage, err := s.contactRepo.FindByID(id)
+	if err != nil {
 		return nil, utils.ErrDatabaseError
 	}
 
-	return &message, nil
+	return updatedMessage, nil
 }
 
 // DeleteMessage elimina un mensaje de contacto
 func (s *ContactService) DeleteMessage(id uint) error {
-	if err := config.DB.Delete(&models.ContactMessage{}, id).Error; err != nil {
+	if err := s.contactRepo.Delete(id); err != nil {
 		return utils.ErrDatabaseError
 	}
 	return nil
@@ -108,16 +112,16 @@ func (s *ContactService) DeleteMessage(id uint) error {
 
 // ReplyToMessage envía una respuesta a un mensaje de contacto
 func (s *ContactService) ReplyToMessage(id uint, replyText string) error {
-	var message models.ContactMessage
-	if err := config.DB.First(&message, id).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return utils.ErrResourceNotFound
-		}
+	message, err := s.contactRepo.FindByID(id)
+	if err != nil {
 		return utils.ErrDatabaseError
+	}
+	if message == nil {
+		return utils.ErrResourceNotFound
 	}
 
 	// Enviar email de respuesta
-	if err := s.sendReplyEmail(message, replyText); err != nil {
+	if err := s.sendReplyEmail(*message, replyText); err != nil {
 		return utils.ErrEmailSendError
 	}
 
@@ -126,10 +130,10 @@ func (s *ContactService) ReplyToMessage(id uint, replyText string) error {
 }
 
 // Enviar email al recibir un contacto
-func (s *ContactService) sendContactEmail(contact models.ContactRequest) error {
+func (s *ContactService) sendContactEmail(contact dto.ContactRequest) error {
 	to := utils.GetEnv("CONTACT_EMAIL", "admin@example.com")
 	subject := "Nuevo mensaje de contacto - " + contact.Name
-	
+
 	// Datos para la plantilla (en una implementación real, usaríamos una plantilla HTML)
 	body := fmt.Sprintf(`
 Nuevo mensaje de contacto recibido:
@@ -140,7 +144,7 @@ Teléfono: %s
 Mensaje:
 %s
 	`, contact.Name, contact.Email, contact.Phone, contact.Message)
-	
+
 	// Enviar email
 	return utils.SendEmail(to, subject, body, "text/plain; charset=\"UTF-8\"")
 }
@@ -159,13 +163,13 @@ func (s *ContactService) sendReplyEmail(contact models.ContactMessage, replyText
 		OriginalMsg: contact.Message,
 		ReplyMsg:    replyText,
 	}
-	
+
 	// Renderizar la plantilla
 	emailBody, err := utils.RenderEmailTemplate("contact_reply", data)
 	if err != nil {
 		return err
 	}
-	
+
 	// Enviar email
 	subject := "Respuesta a tu mensaje"
 	return utils.SendEmail(contact.Email, subject, emailBody, "text/html; charset=\"UTF-8\"")

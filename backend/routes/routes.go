@@ -3,6 +3,7 @@ package routes
 import (
 	"curso-platform/controllers"
 	"curso-platform/middleware"
+	"curso-platform/repositories"
 	"curso-platform/services"
 	"curso-platform/utils"
 	"log"
@@ -28,43 +29,66 @@ func SetupRouter(db *gorm.DB) *gin.Engine {
 	router.Use(middleware.ErrorHandler())
 	router.Use(middleware.ActivityLogger())
 
-	// Iniciar servicios
-	// Nota: Ahora cada servicio recibe directamente la conexión de base de datos
-	authService := services.NewAuthService()
-	passwordResetService := services.NewPasswordResetService(db) // Nuevo servicio MVC
-	userService := services.NewUserService()
+	// ========================================
+	// INYECCIÓN DE DEPENDENCIAS - REPOSITORIOS
+	// ========================================
+	userRepo := repositories.NewUserRepository(db)
+	activityRepo := repositories.NewActivityRepository(db)
+	enrollmentRepo := repositories.NewEnrollmentRepository(db)
+	passwordResetRepo := repositories.NewPasswordResetRepository(db)
+	contactRepo := repositories.NewContactRepository(db)
 
-	
-	contactService := services.NewContactService()
-	
-	activityService := services.NewActivityService(db)
-	enrollmentService := services.NewEnrollmentService(db)
+	// ========================================
+	// INYECCIÓN DE DEPENDENCIAS - SERVICIOS
+	// ========================================
+	// AuthService: requiere UserRepository
+	authService := services.NewAuthService(userRepo)
 
-	// Iniciar controladores
-	// Modificamos el constructor de authController para pasar el passwordResetService
-	authController := controllers.NewAuthController(authService, passwordResetService)
+	// UserService: requiere UserRepository
+	userService := services.NewUserService(userRepo)
+
+	// PasswordResetService: requiere PasswordResetRepository y UserRepository
+	passwordResetService := services.NewPasswordResetService(passwordResetRepo, userRepo)
+
+	// ContactService: requiere ContactRepository
+	contactService := services.NewContactService(contactRepo)
+
+	// ActivityService: requiere ActivityRepository, EnrollmentRepository y DB (para transacciones)
+	activityService := services.NewActivityService(activityRepo, enrollmentRepo, db)
+
+	// EnrollmentService: requiere EnrollmentRepository, ActivityRepository y DB (para transacciones)
+	enrollmentService := services.NewEnrollmentService(enrollmentRepo, activityRepo, db)
+
+	// ========================================
+	// INYECCIÓN DE DEPENDENCIAS - CONTROLADORES
+	// ========================================
+	// AuthController: requiere AuthService, PasswordResetService y UserService
+	authController := controllers.NewAuthController(authService, passwordResetService, userService)
+
+	// ProfileController: requiere UserService y AuthService
 	profileController := controllers.NewProfileController(userService, authService)
-	// Temporal: comentamos la línea problemática hasta verificar la definición del constructor
-	// adminController := controllers.NewAdminController(userService, authService)
-	// TODO: Verificar la definición de NewAdminController para corregir los parámetros
-	
-	
+
+	// ContactController: requiere ContactService
 	contactController := controllers.NewContactController(contactService)
-	
-	
+
+	// ActivityController: requiere ActivityService
 	activityController := controllers.NewActivityController(activityService)
+
+	// EnrollmentController: requiere EnrollmentService
 	enrollmentController := controllers.NewEnrollmentController(enrollmentService)
 
-	// Registrar rutas
+	// AdminController: requiere UserService y AuthService
+	adminController := controllers.NewAdminController(userService, authService)
+
+	// ========================================
+	// REGISTRO DE RUTAS
+	// ========================================
 	authController.RegisterRoutes(router)
 	profileController.RegisterRoutes(router)
-	// Temporal: comentamos hasta corregir el constructor
-	// adminController.RegisterRoutes(router)
-	
 	contactController.RegisterRoutes(router)
-	
 	activityController.RegisterRoutes(router)
 	enrollmentController.RegisterRoutes(router)
+	adminController.RegisterRoutes(router)
 
 	// Configurar rutas para archivos estáticos
 	setupStaticRoutes(router)
@@ -92,48 +116,22 @@ func setupCORS(router *gin.Engine) {
 
 // setupStaticRoutes configura las rutas para servir archivos estáticos
 func setupStaticRoutes(router *gin.Engine) {
-	// Servir archivos estáticos de imágenes
-	router.GET("/static/images/:filename", func(c *gin.Context) {
-		filename := c.Param("filename")
-		filepath := "./static/images/" + filename
-		
-		if _, err := os.Stat(filepath); os.IsNotExist(err) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Imagen no encontrada"})
-			return
-		}
-		
-		c.Header("Cache-Control", "public, max-age=31536000")
-		c.File(filepath)
-	})
-	
 	// Servir archivos estáticos de perfiles
 	router.GET("/static/profiles/:filename", func(c *gin.Context) {
 		filename := c.Param("filename")
 		c.File("./static/profiles/" + filename)
-	})
-	
-	// Servir archivos estáticos de portafolio
-	router.GET("/static/portfolio/:filename", func(c *gin.Context) {
-		filename := c.Param("filename")
-		c.File("./static/portfolio/" + filename)
-	})
-
-	// Servir archivos estáticos de home
-	router.GET("/static/home/:filename", func(c *gin.Context) {
-		filename := c.Param("filename")
-		c.File("./static/home/" + filename)
 	})
 
 	// Servir archivos estáticos de actividades
 	router.GET("/static/activities/:filename", func(c *gin.Context) {
 		filename := c.Param("filename")
 		filepath := "./static/activities/" + filename
-		
+
 		if _, err := os.Stat(filepath); os.IsNotExist(err) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Imagen de actividad no encontrada"})
 			return
 		}
-		
+
 		c.Header("Cache-Control", "public, max-age=31536000")
 		c.File(filepath)
 	})

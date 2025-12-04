@@ -30,11 +30,8 @@ func CreateDirIfNotExists(dirPath string) error {
 func InitStaticDirs() {
 	dirs := []string{
 		"./static",
-		"./static/videos",
-		"./static/images",
 		"./static/profiles",
-		"./static/portfolio",
-		"./static/home",
+		"./static/activities",
 	}
 
 	for _, dir := range dirs {

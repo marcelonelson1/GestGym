@@ -14,11 +14,11 @@ import (
 
 // EnrollmentController gestiona las operaciones de inscripción a actividades
 type EnrollmentController struct {
-	enrollmentService *services.EnrollmentService
+	enrollmentService services.IEnrollmentService
 }
 
 // NewEnrollmentController crea una nueva instancia del controlador de inscripciones
-func NewEnrollmentController(enrollmentService *services.EnrollmentService) *EnrollmentController {
+func NewEnrollmentController(enrollmentService services.IEnrollmentService) *EnrollmentController {
 	return &EnrollmentController{
 		enrollmentService: enrollmentService,
 	}
@@ -89,12 +89,78 @@ func (c *EnrollmentController) GetUserActivities(ctx *gin.Context) {
 	utils.SendSuccessResponse(ctx, activities)
 }
 
+// GetUserEnrollments obtiene las inscripciones del usuario actual
+func (c *EnrollmentController) GetUserEnrollments(ctx *gin.Context) {
+	// Obtener usuario del contexto
+	userValue, exists := ctx.Get("user")
+	if !exists {
+		utils.SendErrorResponse(ctx, utils.ErrUnauthorized, http.StatusUnauthorized)
+		return
+	}
+
+	user, ok := userValue.(models.Usuario)
+	if !ok {
+		utils.SendErrorResponse(ctx, utils.ErrServerError, http.StatusInternalServerError)
+		return
+	}
+
+	// Obtener inscripciones
+	enrollments, err := c.enrollmentService.GetUserEnrollments(user.ID)
+	if err != nil {
+		utils.SendErrorResponse(ctx, err, http.StatusInternalServerError)
+		return
+	}
+
+	utils.SendSuccessResponse(ctx, enrollments)
+}
+
+// CancelEnrollment cancela la inscripción de un usuario a una actividad
+func (c *EnrollmentController) CancelEnrollment(ctx *gin.Context) {
+	// Obtener usuario del contexto
+	userValue, exists := ctx.Get("user")
+	if !exists {
+		utils.SendErrorResponse(ctx, utils.ErrUnauthorized, http.StatusUnauthorized)
+		return
+	}
+
+	user, ok := userValue.(models.Usuario)
+	if !ok {
+		utils.SendErrorResponse(ctx, utils.ErrServerError, http.StatusInternalServerError)
+		return
+	}
+
+	// Obtener ID de la actividad
+	id := ctx.Param("id")
+	activityID, err := strconv.Atoi(id)
+	if err != nil {
+		utils.SendErrorResponse(ctx, utils.ErrBadRequest, http.StatusBadRequest)
+		return
+	}
+
+	// Cancelar la inscripción
+	err = c.enrollmentService.CancelEnrollment(user.ID, uint(activityID))
+	if err != nil {
+		utils.SendErrorResponse(ctx, err, http.StatusInternalServerError)
+		return
+	}
+
+	// Registrar actividad en el log
+	middleware.LogActivity(ctx, user.ID, "enrollment_cancel",
+		fmt.Sprintf("Usuario canceló su inscripción en la actividad ID: %d", activityID))
+
+	utils.SendSuccessResponse(ctx, gin.H{
+		"message": "Inscripción cancelada exitosamente",
+	})
+}
+
 // RegisterRoutes registra las rutas para el controlador de inscripciones
 func (c *EnrollmentController) RegisterRoutes(router *gin.Engine) {
 	enrollment := router.Group("/api/enrollments")
 	enrollment.Use(middleware.AuthMiddleware())
 	{
 		enrollment.POST("/:id", c.Enroll)
+		enrollment.DELETE("/:id", c.CancelEnrollment)
 		enrollment.GET("/my-activities", c.GetUserActivities)
+		enrollment.GET("", c.GetUserEnrollments)
 	}
 }

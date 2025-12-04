@@ -4,19 +4,20 @@ import (
 	"time"
 )
 
-// Usuario representa un usuario en el sistema
+// Usuario representa un usuario en el sistema (capa de persistencia)
+// Solo contiene tags de GORM para mapeo a base de datos
 type Usuario struct {
-	ID        uint      `gorm:"primaryKey" json:"id"`
-	Nombre    string    `gorm:"size:50;not null" json:"nombre"`
-	Apellido  string    `gorm:"size:50;not null" json:"apellido"`
-	Email     string    `gorm:"size:100;not null;uniqueIndex" json:"email"`
-	Password  string    `gorm:"size:100;not null" json:"-"`
-	Role      string    `gorm:"size:20;default:'user'" json:"role"`
-	Phone     string    `gorm:"size:20" json:"phone"`
-	ImageURL  string    `gorm:"size:255" json:"image_url"`
-	LastLogin time.Time `json:"last_login"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID        uint      `gorm:"primaryKey"`
+	Nombre    string    `gorm:"size:50;not null"`
+	Apellido  string    `gorm:"size:50;not null"`
+	Email     string    `gorm:"size:100;not null;uniqueIndex"`
+	Password  string    `gorm:"size:100;not null"`
+	Role      string    `gorm:"size:20;default:'user'"`
+	Phone     string    `gorm:"size:20"`
+	ImageURL  string    `gorm:"size:255"`
+	LastLogin time.Time `gorm:"autoUpdateTime:false"`
+	CreatedAt time.Time `gorm:"autoCreateTime"`
+	UpdatedAt time.Time `gorm:"autoUpdateTime"`
 }
 
 // TableName especifica el nombre de la tabla para el modelo Usuario

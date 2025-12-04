@@ -4,28 +4,18 @@ import (
 	"time"
 )
 
-// PasswordReset modelo para almacenar los tokens de restablecimiento
+// PasswordReset modelo para almacenar los tokens de restablecimiento (capa de persistencia)
+// Solo contiene tags de GORM para mapeo a base de datos
 type PasswordReset struct {
-	ID        uint      `gorm:"primaryKey" json:"id"`
-	Email     string    `gorm:"size:100;not null;index" json:"email"`
-	Token     string    `gorm:"size:100;not null;uniqueIndex" json:"token"`
-	CreatedAt time.Time `json:"created_at"`
-	ExpiresAt time.Time `json:"expires_at"`
-	Used      bool      `gorm:"default:false" json:"used"`
+	ID        uint      `gorm:"primaryKey"`
+	Email     string    `gorm:"size:100;not null;index"`
+	Token     string    `gorm:"size:100;not null;uniqueIndex"`
+	CreatedAt time.Time
+	ExpiresAt time.Time
+	Used      bool `gorm:"default:false"`
 }
 
 // TableName especifica el nombre de la tabla para el modelo PasswordReset
 func (PasswordReset) TableName() string {
 	return "password_resets"
-}
-
-// ForgotPasswordRequest estructura para la solicitud de recuperación
-type ForgotPasswordRequest struct {
-	Email string `json:"email" binding:"required,email"`
-}
-
-// ResetPasswordRequest estructura para restablecer contraseña
-type ResetPasswordRequest struct {
-	Token    string `json:"token" binding:"required"`
-	Password string `json:"password" binding:"required,min=6"`
 }

@@ -111,6 +111,12 @@ const Navbar = () => {
                       </Link>
                     </li>
                     <li>
+                      <Link to="/admin/users" className="dropdown-item">
+                        <FaUser className="dropdown-icon" />
+                        Usuarios
+                      </Link>
+                    </li>
+                    <li>
                       <Link to="/admin/messages" className="dropdown-item">
                         <FaEnvelope className="dropdown-icon" />
                         Mensajes

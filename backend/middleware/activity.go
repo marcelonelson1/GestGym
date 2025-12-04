@@ -45,7 +45,7 @@ func ActivityLogger() gin.HandlerFunc {
 			"/api/auth/login":    "login",
 			"/api/auth/register": "register",
 			"/api/admin":         "admin_access",
-			"/api/cursos":        "course_management",
+			"/api/activities":    "activity_management",
 		}
 
 		// Verificar si la ruta actual está en la lista de monitoreo
@@ -75,7 +75,7 @@ func generateActivityDetails(c *gin.Context, path, method, actionType string) st
 		return "Registro de nuevo usuario"
 	case "admin_access":
 		return "Acceso a panel de administración: " + path
-	case "course_management":
+	case "activity_management":
 		operation := "acceso"
 		if method == "POST" {
 			operation = "creación"
@@ -84,7 +84,7 @@ func generateActivityDetails(c *gin.Context, path, method, actionType string) st
 		} else if method == "DELETE" {
 			operation = "eliminación"
 		}
-		return "Gestión de cursos: " + operation
+		return "Gestión de actividades: " + operation
 	default:
 		return "Acceso a: " + path
 	}

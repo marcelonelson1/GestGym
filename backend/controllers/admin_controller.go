@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"curso-platform/dto"
 	"curso-platform/middleware"
 	"curso-platform/models"
 	"curso-platform/services"
@@ -14,31 +15,64 @@ import (
 
 // AdminController gestiona las operaciones relacionadas con el panel de administración
 type AdminController struct {
-	userService  *services.UserService
-
-	authService  *services.AuthService
+	userService services.IUserService
+	authService services.IAuthService
 }
 
 // NewAdminController crea una nueva instancia del controlador de administración
-func NewAdminController(userService *services.UserService, authService *services.AuthService) *AdminController {
+func NewAdminController(userService services.IUserService, authService services.IAuthService) *AdminController {
 	return &AdminController{
-		userService:  userService,
-		
-		authService:  authService,
+		userService: userService,
+		authService: authService,
 	}
 }
 
-// GetAdminStats obtiene estadísticas generales para el panel de administración
+// CreateUser permite a un admin crear un nuevo usuario
+func (c *AdminController) CreateUser(ctx *gin.Context) {
+	var req dto.RegisterRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.SendErrorResponse(ctx, err, http.StatusBadRequest)
+		return
+	}
 
+	// Validar que el rol sea válido
+	if req.Role != "" && req.Role != "user" && req.Role != "admin" {
+		utils.SendErrorResponse(ctx, fmt.Errorf("rol inválido, debe ser 'user' o 'admin'"), http.StatusBadRequest)
+		return
+	}
 
-// GetSalesStats obtiene estadísticas detalladas de ventas
+	// Si no se especifica rol, por defecto es 'user'
+	if req.Role == "" {
+		req.Role = "user"
+	}
 
+	// Crear usuario
+	err := c.authService.Register(req)
+	if err != nil {
+		utils.SendErrorResponse(ctx, err, http.StatusBadRequest)
+		return
+	}
 
-// GetAdminDashboard obtiene datos detallados para el dashboard del administrador
+	// Obtener el usuario recién creado
+	user, err := c.userService.GetUserByEmail(req.Email)
+	if err != nil {
+		utils.SendErrorResponse(ctx, err, http.StatusInternalServerError)
+		return
+	}
 
+	// Registrar actividad
+	adminValue, _ := ctx.Get("user")
+	adminUser := adminValue.(models.Usuario)
+	middleware.LogActivity(ctx, adminUser.ID, "create_user",
+		fmt.Sprintf("Admin creó usuario ID: %d, Email: %s, Nombre: %s %s, Rol: %s",
+			user.ID, user.Email, user.Nombre, user.Apellido, user.Role))
 
-// GetActivityLog obtiene el registro de actividad con paginación y filtros
-
+	ctx.JSON(http.StatusCreated, gin.H{
+		"success": true,
+		"message": "Usuario creado correctamente",
+		"data":    user,
+	})
+}
 
 // ListUsers obtiene todos los usuarios con paginación y filtros
 func (c *AdminController) ListUsers(ctx *gin.Context) {
@@ -116,7 +150,7 @@ func (c *AdminController) UpdateUser(ctx *gin.Context) {
 		return
 	}
 
-	var req models.UpdateProfileRequest
+	var req dto.UpdateProfileRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		utils.SendErrorResponse(ctx, err, http.StatusBadRequest)
 		return
@@ -198,7 +232,7 @@ func (c *AdminController) ChangeUserRole(ctx *gin.Context) {
 		return
 	}
 
-	var req models.ChangeRoleRequest
+	var req dto.ChangeRoleRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		utils.SendErrorResponse(ctx, err, http.StatusBadRequest)
 		return
@@ -237,10 +271,7 @@ func (c *AdminController) RegisterRoutes(router *gin.Engine) {
 	admin := router.Group("/api/admin")
 	admin.Use(middleware.AuthMiddleware(), middleware.AdminMiddleware())
 	{
-	
-
-		
-		
+		admin.POST("/users", c.CreateUser)
 		admin.GET("/users", c.ListUsers)
 		admin.GET("/users/:id", c.GetUserById)
 		admin.PUT("/users/:id", c.UpdateUser)

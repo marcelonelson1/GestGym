@@ -1,16 +1,15 @@
 package services
 
 import (
-	"curso-platform/config"
+	"curso-platform/dto"
 	"curso-platform/models"
+	"curso-platform/repositories"
 	"curso-platform/utils"
 	"errors"
 	"fmt"
-	"log"
 	"mime/multipart"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"gorm.io/gorm"
@@ -18,136 +17,85 @@ import (
 
 // ActivityService gestiona la lógica de negocio para actividades
 type ActivityService struct {
-	db *gorm.DB
+	activityRepo   repositories.ActivityRepository
+	enrollmentRepo repositories.EnrollmentRepository
+	db             *gorm.DB // Necesario para transacciones
 }
 
 // NewActivityService crea una nueva instancia del servicio de actividades
-func NewActivityService(db *gorm.DB) *ActivityService {
+func NewActivityService(activityRepo repositories.ActivityRepository, enrollmentRepo repositories.EnrollmentRepository, db *gorm.DB) IActivityService {
 	return &ActivityService{
-		db: db,
+		activityRepo:   activityRepo,
+		enrollmentRepo: enrollmentRepo,
+		db:             db,
 	}
 }
 
 // GetActivities obtiene todas las actividades con filtros opcionales
-func (s *ActivityService) GetActivities(search, category string) ([]models.Activity, error) {
-	var activities []models.Activity
-
-	// Verificar si la tabla existe, si no, intentar crearla
-	if !s.db.Migrator().HasTable(&models.Activity{}) {
-		log.Println("La tabla 'activities' no existe, intentando crear...")
-		if err := s.db.Migrator().CreateTable(&models.Activity{}); err != nil {
-			return nil, fmt.Errorf("error al crear tabla 'activities': %w", err)
-		}
-		log.Println("Tabla 'activities' creada correctamente")
-		return []models.Activity{}, nil // Devolver lista vacía ya que la tabla se acaba de crear
-	}
-
-	query := s.db.Model(&models.Activity{})
+// Retorna DTOs en lugar de modelos
+func (s *ActivityService) GetActivities(search, category string) ([]dto.ActivityDTO, error) {
+	filters := make(map[string]interface{})
 
 	if search != "" {
-		// Intentar convertir search a número para buscar por ID
-		if id, err := strconv.Atoi(search); err == nil {
-			// Si es un número, buscar por ID exacto O por texto en otros campos
-			searchQuery := "%" + search + "%"
-			query = query.Where("id = ? OR title LIKE ? OR description LIKE ? OR instructor LIKE ?",
-				id, searchQuery, searchQuery, searchQuery)
-		} else {
-			// Si no es un número, buscar solo en campos de texto
-			searchQuery := "%" + search + "%"
-			query = query.Where("title LIKE ? OR description LIKE ? OR instructor LIKE ?",
-				searchQuery, searchQuery, searchQuery)
-		}
+		filters["search"] = search
 	}
 
 	if category != "" {
-		query = query.Where("category = ?", category)
+		filters["category"] = category
 	}
 
-	if err := query.Find(&activities).Error; err != nil {
-		if strings.Contains(err.Error(), "Table") && strings.Contains(err.Error(), "doesn't exist") {
-			// Intentar ejecutar migraciones si la tabla no existe
-			if err := config.RunMigrations(s.db); err != nil {
-				return nil, fmt.Errorf("error al migrar base de datos: %w", err)
-			}
-			// Intentar nuevamente después de migrar
-			if err := query.Find(&activities).Error; err != nil {
-				return nil, err
-			}
-		} else {
-			return nil, err
-		}
+	// Repository retorna models
+	activities, err := s.activityRepo.FindAll(filters)
+	if err != nil {
+		return nil, err
 	}
 
-	return activities, nil
+	// Convertir models a DTOs
+	return dto.ToActivityDTOs(activities), nil
 }
 
 // GetActivityByID obtiene una actividad por su ID
-func (s *ActivityService) GetActivityByID(id uint) (*models.Activity, error) {
-	var activity models.Activity
-
-	// Verificar si la tabla existe
-	if !s.db.Migrator().HasTable(&models.Activity{}) {
-		return nil, fmt.Errorf("la tabla 'activities' no existe")
+// Retorna DTO en lugar de modelo
+func (s *ActivityService) GetActivityByID(id uint) (*dto.ActivityDTO, error) {
+	// Repository retorna model
+	activity, err := s.activityRepo.FindByID(id)
+	if err != nil {
+		return nil, err
+	}
+	if activity == nil {
+		return nil, utils.ErrResourceNotFound
 	}
 
-	if err := s.db.First(&activity, id).Error; err != nil {
-		return nil, fmt.Errorf("actividad no encontrada: %w", err)
-	}
-	return &activity, nil
+	// Convertir model a DTO
+	return dto.ToActivityDTO(activity), nil
 }
 
 // CreateActivity crea una nueva actividad
-func (s *ActivityService) CreateActivity(req models.CreateActivityRequest, file *multipart.FileHeader) (*models.Activity, error) {
-	// Verificar si la tabla existe
-	if !s.db.Migrator().HasTable(&models.Activity{}) {
-		log.Println("La tabla 'activities' no existe, intentando crear...")
-		if err := s.db.Migrator().CreateTable(&models.Activity{}); err != nil {
-			return nil, fmt.Errorf("error al crear tabla 'activities': %w", err)
-		}
-		log.Println("Tabla 'activities' creada correctamente")
-	}
+// Recibe request DTO y retorna response DTO
+func (s *ActivityService) CreateActivity(req dto.CreateActivityRequest, imageURL string) (*dto.ActivityDTO, error) {
+	// Convertir request a model
+	activity := req.ToModel(imageURL)
 
-	// Crear la actividad con los datos del request
-	activity := models.Activity{
-		Title:       req.Title,
-		Description: req.Description,
-		Day:         req.Day,
-		Time:        req.Time,
-		Duration:    req.Duration,
-		Instructor:  req.Instructor,
-		Category:    req.Category,
-		Capacity:    req.Capacity,
-		Enrolled:    0,
-	}
-
-	// Guardar la imagen si se proporciona
-	if file != nil {
-		imageURL, err := s.saveActivityImage(file)
-		if err != nil {
-			return nil, fmt.Errorf("error al guardar la imagen: %w", err)
-		}
-		activity.ImageUrl = imageURL
-	}
-
-	// Guardar la actividad en la base de datos
-	if err := s.db.Create(&activity).Error; err != nil {
+	// Guardar en BD (repository retorna model)
+	createdActivity, err := s.activityRepo.Create(activity)
+	if err != nil {
 		return nil, fmt.Errorf("error al crear la actividad: %w", err)
 	}
 
-	return &activity, nil
+	// Convertir model a DTO
+	return dto.ToActivityDTO(createdActivity), nil
 }
 
 // UpdateActivity actualiza una actividad existente
-func (s *ActivityService) UpdateActivity(id uint, req models.UpdateActivityRequest, file *multipart.FileHeader) (*models.Activity, error) {
-	// Verificar si la tabla existe
-	if !s.db.Migrator().HasTable(&models.Activity{}) {
-		return nil, fmt.Errorf("la tabla 'activities' no existe")
+// Recibe request DTO y retorna response DTO
+func (s *ActivityService) UpdateActivity(id uint, req dto.UpdateActivityRequest, imageURL string) (*dto.ActivityDTO, error) {
+	// Obtener actividad existente (repository retorna model)
+	activity, err := s.activityRepo.FindByID(id)
+	if err != nil {
+		return nil, err
 	}
-
-	// Obtener la actividad existente
-	var activity models.Activity
-	if err := s.db.First(&activity, id).Error; err != nil {
-		return nil, fmt.Errorf("actividad no encontrada: %w", err)
+	if activity == nil {
+		return nil, utils.ErrResourceNotFound
 	}
 
 	// Actualizar campos si se proporcionan en el request
@@ -176,8 +124,8 @@ func (s *ActivityService) UpdateActivity(id uint, req models.UpdateActivityReque
 		activity.Capacity = req.Capacity
 	}
 
-	// Guardar la nueva imagen si se proporciona
-	if file != nil {
+	// Actualizar imagen si se proporciona una nueva
+	if imageURL != "" {
 		// Eliminar la imagen anterior si existe
 		if activity.ImageUrl != "" {
 			oldImagePath := filepath.Join("static", "activities", filepath.Base(activity.ImageUrl))
@@ -185,34 +133,28 @@ func (s *ActivityService) UpdateActivity(id uint, req models.UpdateActivityReque
 				os.Remove(oldImagePath)
 			}
 		}
-
-		// Guardar la nueva imagen
-		imageURL, err := s.saveActivityImage(file)
-		if err != nil {
-			return nil, fmt.Errorf("error al guardar la imagen: %w", err)
-		}
 		activity.ImageUrl = imageURL
 	}
 
-	// Actualizar la actividad en la base de datos
-	if err := s.db.Save(&activity).Error; err != nil {
+	// Actualizar en BD (repository retorna model)
+	updatedActivity, err := s.activityRepo.Update(activity)
+	if err != nil {
 		return nil, fmt.Errorf("error al actualizar la actividad: %w", err)
 	}
 
-	return &activity, nil
+	// Convertir model a DTO
+	return dto.ToActivityDTO(updatedActivity), nil
 }
 
 // DeleteActivity elimina una actividad
 func (s *ActivityService) DeleteActivity(id uint) error {
-	// Verificar si la tabla existe
-	if !s.db.Migrator().HasTable(&models.Activity{}) {
-		return fmt.Errorf("la tabla 'activities' no existe")
-	}
-
 	// Obtener la actividad para verificar si existe y obtener la ruta de la imagen
-	var activity models.Activity
-	if err := s.db.First(&activity, id).Error; err != nil {
-		return fmt.Errorf("actividad no encontrada: %w", err)
+	activity, err := s.activityRepo.FindByID(id)
+	if err != nil {
+		return err
+	}
+	if activity == nil {
+		return utils.ErrResourceNotFound
 	}
 
 	// Eliminar la imagen si existe
@@ -224,15 +166,15 @@ func (s *ActivityService) DeleteActivity(id uint) error {
 	}
 
 	// Eliminar la actividad de la base de datos
-	if err := s.db.Delete(&activity).Error; err != nil {
+	if err := s.activityRepo.Delete(id); err != nil {
 		return fmt.Errorf("error al eliminar la actividad: %w", err)
 	}
 
 	return nil
 }
 
-// saveActivityImage guarda la imagen de la actividad y devuelve la URL
-func (s *ActivityService) saveActivityImage(file *multipart.FileHeader) (string, error) {
+// SaveActivityImage guarda la imagen de la actividad y devuelve la URL
+func SaveActivityImage(file *multipart.FileHeader) (string, error) {
 	// Validar extensión de archivo
 	ext := strings.ToLower(filepath.Ext(file.Filename))
 	if !utils.IsValidImageExtension(ext) {
@@ -260,66 +202,15 @@ func (s *ActivityService) saveActivityImage(file *multipart.FileHeader) (string,
 	return fmt.Sprintf("/static/activities/%s", fileName), nil
 }
 
-// GetEnrollmentsByActivity obtiene todas las inscripciones para una actividad específica
-func (s *ActivityService) GetEnrollmentsByActivity(activityID uint) ([]models.Enrollment, error) {
-	// Verificar si la tabla existe
-	if !s.db.Migrator().HasTable(&models.Enrollment{}) {
-		log.Println("La tabla 'enrollments' no existe, intentando crear...")
-		if err := s.db.Migrator().CreateTable(&models.Enrollment{}); err != nil {
-			return nil, fmt.Errorf("error al crear tabla 'enrollments': %w", err)
-		}
-		log.Println("Tabla 'enrollments' creada correctamente")
-		return []models.Enrollment{}, nil
-	}
-
-	var enrollments []models.Enrollment
-	if err := s.db.Where("activity_id = ?", activityID).Find(&enrollments).Error; err != nil {
-		return nil, fmt.Errorf("error al obtener inscripciones: %w", err)
-	}
-
-	return enrollments, nil
-}
-
-// GetUserEnrollments obtiene todas las inscripciones de un usuario
-func (s *ActivityService) GetUserEnrollments(userID uint) ([]models.Enrollment, error) {
-	// Verificar si la tabla existe
-	if !s.db.Migrator().HasTable(&models.Enrollment{}) {
-		log.Println("La tabla 'enrollments' no existe, intentando crear...")
-		if err := s.db.Migrator().CreateTable(&models.Enrollment{}); err != nil {
-			return nil, fmt.Errorf("error al crear tabla 'enrollments': %w", err)
-		}
-		log.Println("Tabla 'enrollments' creada correctamente")
-		return []models.Enrollment{}, nil
-	}
-
-	var enrollments []models.Enrollment
-	if err := s.db.Where("user_id = ?", userID).Find(&enrollments).Error; err != nil {
-		return nil, fmt.Errorf("error al obtener inscripciones: %w", err)
-	}
-
-	return enrollments, nil
-}
-
 // EnrollUser inscribe a un usuario en una actividad
 func (s *ActivityService) EnrollUser(userID, activityID uint) error {
-	// Verificar si la tabla de actividades existe
-	if !s.db.Migrator().HasTable(&models.Activity{}) {
-		return fmt.Errorf("la tabla 'activities' no existe")
-	}
-
-	// Verificar si la tabla de inscripciones existe
-	if !s.db.Migrator().HasTable(&models.Enrollment{}) {
-		log.Println("La tabla 'enrollments' no existe, intentando crear...")
-		if err := s.db.Migrator().CreateTable(&models.Enrollment{}); err != nil {
-			return fmt.Errorf("error al crear tabla 'enrollments': %w", err)
-		}
-		log.Println("Tabla 'enrollments' creada correctamente")
-	}
-
 	// Verificar si la actividad existe y tiene capacidad
-	var activity models.Activity
-	if err := s.db.First(&activity, activityID).Error; err != nil {
-		return fmt.Errorf("actividad no encontrada: %w", err)
+	activity, err := s.activityRepo.FindByID(activityID)
+	if err != nil {
+		return err
+	}
+	if activity == nil {
+		return utils.ErrResourceNotFound
 	}
 
 	// Verificar si hay cupo disponible
@@ -328,38 +219,41 @@ func (s *ActivityService) EnrollUser(userID, activityID uint) error {
 	}
 
 	// Verificar si el usuario ya está inscrito
-	var existingEnrollment models.Enrollment
-	result := s.db.Where("user_id = ? AND activity_id = ?", userID, activityID).First(&existingEnrollment)
-	if result.Error == nil {
+	existingEnrollment, err := s.enrollmentRepo.FindByUserAndActivity(userID, activityID)
+	if err != nil {
+		return fmt.Errorf("error al verificar inscripción: %w", err)
+	}
+	if existingEnrollment != nil {
 		return errors.New("el usuario ya está inscrito en esta actividad")
-	} else if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		return fmt.Errorf("error al verificar inscripción: %w", result.Error)
 	}
 
-	// Crear la inscripción
+	// Crear la inscripción dentro de una transacción
+	tx := s.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// Crear enrollment usando transacción directa (el repo no maneja transacciones)
 	enrollment := models.Enrollment{
 		UserID:     userID,
 		ActivityID: activityID,
 		Status:     "active",
 	}
 
-	// Iniciar transacción
-	tx := s.db.Begin()
-
-	// Guardar la inscripción
 	if err := tx.Create(&enrollment).Error; err != nil {
 		tx.Rollback()
 		return fmt.Errorf("error al crear inscripción: %w", err)
 	}
 
 	// Actualizar contador de inscritos
-	activity.Enrolled++
-	if err := tx.Save(&activity).Error; err != nil {
+	if err := tx.Model(&models.Activity{}).Where("id = ?", activityID).
+		Update("enrolled", gorm.Expr("enrolled + ?", 1)).Error; err != nil {
 		tx.Rollback()
-		return fmt.Errorf("error al actualizar contador de inscritos: %w", err)
+		return fmt.Errorf("error al actualizar contador: %w", err)
 	}
 
-	// Confirmar transacción
 	if err := tx.Commit().Error; err != nil {
 		return fmt.Errorf("error al confirmar transacción: %w", err)
 	}
@@ -369,42 +263,48 @@ func (s *ActivityService) EnrollUser(userID, activityID uint) error {
 
 // CancelEnrollment cancela la inscripción de un usuario a una actividad
 func (s *ActivityService) CancelEnrollment(userID, activityID uint) error {
-	// Verificar si las tablas existen
-	if !s.db.Migrator().HasTable(&models.Activity{}) || !s.db.Migrator().HasTable(&models.Enrollment{}) {
-		return fmt.Errorf("las tablas necesarias no existen")
-	}
-
 	// Verificar si la inscripción existe
-	var enrollment models.Enrollment
-	if err := s.db.Where("user_id = ? AND activity_id = ?", userID, activityID).First(&enrollment).Error; err != nil {
-		return fmt.Errorf("inscripción no encontrada: %w", err)
+	enrollment, err := s.enrollmentRepo.FindByUserAndActivity(userID, activityID)
+	if err != nil {
+		return err
+	}
+	if enrollment == nil {
+		return errors.New("inscripción no encontrada")
 	}
 
-	// Obtener la actividad
-	var activity models.Activity
-	if err := s.db.First(&activity, activityID).Error; err != nil {
-		return fmt.Errorf("actividad no encontrada: %w", err)
+	// Verificar si la actividad existe
+	activity, err := s.activityRepo.FindByID(activityID)
+	if err != nil {
+		return err
+	}
+	if activity == nil {
+		return utils.ErrResourceNotFound
 	}
 
 	// Iniciar transacción
 	tx := s.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
 
-	// Eliminar la inscripción
-	if err := tx.Delete(&enrollment).Error; err != nil {
+	// Eliminar la inscripción usando transacción directa
+	if err := tx.Where("user_id = ? AND activity_id = ?", userID, activityID).
+		Delete(&models.Enrollment{}).Error; err != nil {
 		tx.Rollback()
 		return fmt.Errorf("error al eliminar inscripción: %w", err)
 	}
 
 	// Actualizar contador de inscritos
 	if activity.Enrolled > 0 {
-		activity.Enrolled--
-		if err := tx.Save(&activity).Error; err != nil {
+		if err := tx.Model(&models.Activity{}).Where("id = ?", activityID).
+			Update("enrolled", gorm.Expr("enrolled - ?", 1)).Error; err != nil {
 			tx.Rollback()
-			return fmt.Errorf("error al actualizar contador de inscritos: %w", err)
+			return fmt.Errorf("error al actualizar contador: %w", err)
 		}
 	}
 
-	// Confirmar transacción
 	if err := tx.Commit().Error; err != nil {
 		return fmt.Errorf("error al confirmar transacción: %w", err)
 	}

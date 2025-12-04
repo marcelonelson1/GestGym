@@ -1,7 +1,7 @@
 package controllers
 
 import (
-	"curso-platform/models"
+	"curso-platform/dto"
 	"curso-platform/services"
 	"curso-platform/utils"
 	"net/http"
@@ -11,13 +11,15 @@ import (
 
 // PasswordResetController maneja las solicitudes relacionadas con la recuperación de contraseña
 type PasswordResetController struct {
-	service *services.PasswordResetService
+	service     services.IPasswordResetService
+	userService services.IUserService
 }
 
 // NewPasswordResetController crea una nueva instancia del controlador
-func NewPasswordResetController(service *services.PasswordResetService) *PasswordResetController {
+func NewPasswordResetController(service services.IPasswordResetService, userService services.IUserService) *PasswordResetController {
 	return &PasswordResetController{
-		service: service,
+		service:     service,
+		userService: userService,
 	}
 }
 
@@ -33,7 +35,7 @@ func (c *PasswordResetController) RegisterRoutes(router *gin.Engine) {
 
 // ForgotPassword maneja la solicitud de recuperación de contraseña
 func (c *PasswordResetController) ForgotPassword(ctx *gin.Context) {
-	var req models.ForgotPasswordRequest
+	var req dto.ForgotPasswordRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		utils.SendErrorResponse(ctx, utils.ErrInvalidRequest, http.StatusBadRequest)
 		return
@@ -57,9 +59,9 @@ func (c *PasswordResetController) ForgotPassword(ctx *gin.Context) {
 	frontendURL := utils.GetEnv("FRONTEND_URL", "http://localhost:3000")
 	resetLink := frontendURL + "/reset-password/" + reset.Token
 
-	// En una aplicación real, buscaríamos los detalles del usuario y su nombre
-	var user models.Usuario
-	if result := c.service.GetDB().Where("email = ?", req.Email).First(&user); result.Error != nil {
+	// Buscar el usuario por email para obtener su nombre
+	user, userErr := c.userService.GetUserByEmail(req.Email)
+	if userErr != nil {
 		utils.SendSuccessResponse(ctx, response)
 		return
 	}
@@ -100,7 +102,7 @@ func (c *PasswordResetController) ValidateResetToken(ctx *gin.Context) {
 
 // ResetPassword restablece la contraseña de un usuario
 func (c *PasswordResetController) ResetPassword(ctx *gin.Context) {
-	var req models.ResetPasswordRequest
+	var req dto.ResetPasswordRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		utils.SendErrorResponse(ctx, utils.ErrInvalidRequest, http.StatusBadRequest)
 		return

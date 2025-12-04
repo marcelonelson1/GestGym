@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"curso-platform/dto"
 	"curso-platform/middleware"
 	"curso-platform/models"
 	"curso-platform/services"
@@ -13,11 +14,11 @@ import (
 
 // ActivityController gestiona las operaciones HTTP relacionadas con actividades
 type ActivityController struct {
-	activityService *services.ActivityService
+	activityService services.IActivityService
 }
 
 // NewActivityController crea una nueva instancia del controlador de actividades
-func NewActivityController(activityService *services.ActivityService) *ActivityController {
+func NewActivityController(activityService services.IActivityService) *ActivityController {
 	return &ActivityController{
 		activityService: activityService,
 	}
@@ -78,21 +79,26 @@ func (c *ActivityController) CreateActivity(ctx *gin.Context) {
 	}
 	
 	// Obtener datos del formulario multipart
-	var req models.CreateActivityRequest
+	var req dto.CreateActivityRequest
 	if err := ctx.ShouldBind(&req); err != nil {
 		utils.SendErrorResponse(ctx, err, http.StatusBadRequest)
 		return
 	}
-	
-	// Obtener imagen si existe
+
+	// Procesar imagen si existe
+	var imageURL string
 	file, err := ctx.FormFile("image")
-	if err != nil && err != http.ErrMissingFile {
-		utils.SendErrorResponse(ctx, err, http.StatusBadRequest)
-		return
+	if err == nil {
+		// Guardar imagen
+		imageURL, err = services.SaveActivityImage(file)
+		if err != nil {
+			utils.SendErrorResponse(ctx, err, http.StatusBadRequest)
+			return
+		}
 	}
-	
+
 	// Crear actividad
-	activity, err := c.activityService.CreateActivity(req, file)
+	activity, err := c.activityService.CreateActivity(req, imageURL)
 	if err != nil {
 		utils.SendErrorResponse(ctx, err, http.StatusInternalServerError)
 		return
@@ -129,21 +135,26 @@ func (c *ActivityController) UpdateActivity(ctx *gin.Context) {
 	}
 	
 	// Obtener datos del formulario multipart
-	var req models.UpdateActivityRequest
+	var req dto.UpdateActivityRequest
 	if err := ctx.ShouldBind(&req); err != nil {
 		utils.SendErrorResponse(ctx, err, http.StatusBadRequest)
 		return
 	}
-	
-	// Obtener imagen si existe
+
+	// Procesar imagen si existe
+	var imageURL string
 	file, err := ctx.FormFile("image")
-	if err != nil && err != http.ErrMissingFile {
-		utils.SendErrorResponse(ctx, err, http.StatusBadRequest)
-		return
+	if err == nil {
+		// Guardar imagen
+		imageURL, err = services.SaveActivityImage(file)
+		if err != nil {
+			utils.SendErrorResponse(ctx, err, http.StatusBadRequest)
+			return
+		}
 	}
-	
+
 	// Actualizar actividad
-	activity, err := c.activityService.UpdateActivity(uint(id), req, file)
+	activity, err := c.activityService.UpdateActivity(uint(id), req, imageURL)
 	if err != nil {
 		utils.SendErrorResponse(ctx, err, http.StatusInternalServerError)
 		return
@@ -203,101 +214,6 @@ func (c *ActivityController) DeleteActivity(ctx *gin.Context) {
 	})
 }
 
-// EnrollActivity inscribe al usuario actual en una actividad
-func (c *ActivityController) EnrollActivity(ctx *gin.Context) {
-	// Obtener usuario actual
-	userValue, _ := ctx.Get("user")
-	user := userValue.(models.Usuario)
-	
-	// Obtener datos de la solicitud
-	var req models.EnrollmentRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.SendErrorResponse(ctx, err, http.StatusBadRequest)
-		return
-	}
-	
-	// Inscribir usuario
-	if err := c.activityService.EnrollUser(user.ID, req.ActivityID); err != nil {
-		utils.SendErrorResponse(ctx, err, http.StatusInternalServerError)
-		return
-	}
-	
-	// Obtener actividad para el log
-	activity, _ := c.activityService.GetActivityByID(req.ActivityID)
-	activityName := "desconocida"
-	if activity != nil {
-		activityName = activity.Title
-	}
-	
-	// Registrar actividad
-	middleware.LogActivity(ctx, user.ID, "enroll_activity", 
-		fmt.Sprintf("Se inscribió en la actividad: %s (ID: %d)", activityName, req.ActivityID))
-	
-	// Enviar respuesta
-	ctx.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Inscripción realizada correctamente",
-	})
-}
-
-// CancelEnrollment cancela la inscripción del usuario actual en una actividad
-func (c *ActivityController) CancelEnrollment(ctx *gin.Context) {
-	// Obtener usuario actual
-	userValue, _ := ctx.Get("user")
-	user := userValue.(models.Usuario)
-	
-	// Obtener ID de la actividad
-	idStr := ctx.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
-	if err != nil {
-		utils.SendErrorResponse(ctx, fmt.Errorf("ID inválido"), http.StatusBadRequest)
-		return
-	}
-	
-	// Obtener actividad para el log antes de cancelar
-	activity, _ := c.activityService.GetActivityByID(uint(id))
-	activityName := "desconocida"
-	if activity != nil {
-		activityName = activity.Title
-	}
-	
-	// Cancelar inscripción
-	if err := c.activityService.CancelEnrollment(user.ID, uint(id)); err != nil {
-		utils.SendErrorResponse(ctx, err, http.StatusInternalServerError)
-		return
-	}
-	
-	// Registrar actividad
-	middleware.LogActivity(ctx, user.ID, "cancel_enrollment", 
-		fmt.Sprintf("Canceló su inscripción en la actividad: %s (ID: %d)", activityName, id))
-	
-	// Enviar respuesta
-	ctx.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Inscripción cancelada correctamente",
-	})
-}
-
-// GetUserEnrollments obtiene las inscripciones del usuario actual
-func (c *ActivityController) GetUserEnrollments(ctx *gin.Context) {
-	// Obtener usuario actual
-	userValue, _ := ctx.Get("user")
-	user := userValue.(models.Usuario)
-	
-	// Obtener inscripciones
-	enrollments, err := c.activityService.GetUserEnrollments(user.ID)
-	if err != nil {
-		utils.SendErrorResponse(ctx, err, http.StatusInternalServerError)
-		return
-	}
-	
-	// Enviar respuesta
-	ctx.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    enrollments,
-	})
-}
-
 // RegisterRoutes registra todas las rutas relacionadas con actividades
 func (c *ActivityController) RegisterRoutes(router *gin.Engine) {
 	// Rutas públicas
@@ -306,16 +222,7 @@ func (c *ActivityController) RegisterRoutes(router *gin.Engine) {
 		activities.GET("", c.GetActivities)
 		activities.GET("/:id", c.GetActivityByID)
 	}
-	
-	// Rutas protegidas (requieren autenticación)
-	authActivities := router.Group("/api/activities")
-	authActivities.Use(middleware.AuthMiddleware())
-	{
-		authActivities.POST("/enroll", c.EnrollActivity)
-		authActivities.DELETE("/enroll/:id", c.CancelEnrollment)
-		authActivities.GET("/enrollments", c.GetUserEnrollments)
-	}
-	
+
 	// Rutas de administración (requieren rol de administrador)
 	adminActivities := router.Group("/api/admin/activities")
 	adminActivities.Use(middleware.AuthMiddleware(), middleware.AdminMiddleware())

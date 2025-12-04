@@ -2,6 +2,7 @@
 package controllers
 
 import (
+	"curso-platform/dto"
 	"curso-platform/middleware"
 	"curso-platform/models"
 	"curso-platform/services"
@@ -14,21 +15,23 @@ import (
 
 // AuthController gestiona las operaciones relacionadas con la autenticación
 type AuthController struct {
-	authService          *services.AuthService
-	passwordResetService *services.PasswordResetService
+	authService          services.IAuthService
+	passwordResetService services.IPasswordResetService
+	userService          services.IUserService
 }
 
 // NewAuthController crea una nueva instancia del controlador de autenticación
-func NewAuthController(authService *services.AuthService, passwordResetService *services.PasswordResetService) *AuthController {
+func NewAuthController(authService services.IAuthService, passwordResetService services.IPasswordResetService, userService services.IUserService) *AuthController {
 	return &AuthController{
 		authService:          authService,
 		passwordResetService: passwordResetService,
+		userService:          userService,
 	}
 }
 
 // Register maneja el registro de nuevos usuarios
 func (c *AuthController) Register(ctx *gin.Context) {
-	var req models.RegisterRequest
+	var req dto.RegisterRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		utils.SendErrorResponse(ctx, err, http.StatusBadRequest)
 		return
@@ -44,7 +47,7 @@ func (c *AuthController) Register(ctx *gin.Context) {
 
 // Login maneja el inicio de sesión de usuarios
 func (c *AuthController) Login(ctx *gin.Context) {
-	var req models.LoginRequest
+	var req dto.LoginRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		utils.SendErrorResponse(ctx, err, http.StatusBadRequest)
 		return
@@ -119,7 +122,7 @@ func (c *AuthController) CheckAdmin(ctx *gin.Context) {
 
 // ForgotPassword maneja la solicitud de restablecimiento de contraseña
 func (c *AuthController) ForgotPassword(ctx *gin.Context) {
-	var req models.ForgotPasswordRequest
+	var req dto.ForgotPasswordRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		utils.SendErrorResponse(ctx, err, http.StatusBadRequest)
 		return
@@ -146,10 +149,10 @@ func (c *AuthController) ForgotPassword(ctx *gin.Context) {
 	resetLink := frontendURL + "/reset-password/" + reset.Token
 	log.Printf("Enlace de recuperación generado: %s", resetLink)
 
-	// En una aplicación real, buscaríamos los detalles del usuario y su nombre completo
-	var user models.Usuario
-	if result := c.passwordResetService.GetDB().Where("email = ?", req.Email).First(&user); result.Error != nil {
-		log.Printf("Error al buscar usuario para email: %v", result.Error)
+	// Buscar el usuario por email para obtener su nombre completo
+	user, err := c.userService.GetUserByEmail(req.Email)
+	if err != nil {
+		log.Printf("Error al buscar usuario para email: %v", err)
 		ctx.JSON(http.StatusOK, response)
 		return
 	}
@@ -202,7 +205,7 @@ func (c *AuthController) ValidateResetToken(ctx *gin.Context) {
 
 // ResetPassword restablece la contraseña de un usuario
 func (c *AuthController) ResetPassword(ctx *gin.Context) {
-	var req models.ResetPasswordRequest
+	var req dto.ResetPasswordRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		utils.SendErrorResponse(ctx, err, http.StatusBadRequest)
 		return

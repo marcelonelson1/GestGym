@@ -29,7 +29,8 @@
     -moz-osx-font-smoothing: grayscale;
     color: var(--text-dark);
     line-height: 1.5;
-    background-color: var(--background-light);
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    min-height: 100vh;
   }
   
   code {
