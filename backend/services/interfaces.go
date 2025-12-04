@@ -9,9 +9,9 @@ import (
 // IAuthService define la interfaz para el servicio de autenticación
 type IAuthService interface {
 	Register(req dto.RegisterRequest) error
-	Login(req dto.LoginRequest) (*models.AuthResponse, error)
+	Login(req dto.LoginRequest) (*dto.AuthResponseDTO, error)
 	RefreshToken(userID uint, role string) (string, error)
-	ChangeUserRole(userID uint, newRole string) (*models.Usuario, error)
+	ChangeUserRole(userID uint, newRole string) (*dto.UserDTO, error)
 	ChangePassword(userID uint, currentPassword, newPassword string) error
 }
 

@@ -4,6 +4,7 @@ import (
 	"curso-platform/dto"
 	"curso-platform/middleware"
 	"curso-platform/models"
+	"curso-platform/repositories"
 	"curso-platform/services"
 	"curso-platform/utils"
 	"fmt"
@@ -15,15 +16,17 @@ import (
 
 // AdminController gestiona las operaciones relacionadas con el panel de administración
 type AdminController struct {
-	userService services.IUserService
-	authService services.IAuthService
+	userService     services.IUserService
+	authService     services.IAuthService
+	activityLogRepo repositories.ActivityLogRepository
 }
 
 // NewAdminController crea una nueva instancia del controlador de administración
-func NewAdminController(userService services.IUserService, authService services.IAuthService) *AdminController {
+func NewAdminController(userService services.IUserService, authService services.IAuthService, activityLogRepo repositories.ActivityLogRepository) *AdminController {
 	return &AdminController{
-		userService: userService,
-		authService: authService,
+		userService:     userService,
+		authService:     authService,
+		activityLogRepo: activityLogRepo,
 	}
 }
 
@@ -65,12 +68,15 @@ func (c *AdminController) CreateUser(ctx *gin.Context) {
 	adminUser := adminValue.(models.Usuario)
 	middleware.LogActivity(ctx, adminUser.ID, "create_user",
 		fmt.Sprintf("Admin creó usuario ID: %d, Email: %s, Nombre: %s %s, Rol: %s",
-			user.ID, user.Email, user.Nombre, user.Apellido, user.Role))
+			user.ID, user.Email, user.Nombre, user.Apellido, user.Role), c.activityLogRepo)
+
+	// Convertir a DTO para asegurar serialización correcta
+	userDTO := dto.ToUserDTO(user)
 
 	ctx.JSON(http.StatusCreated, gin.H{
 		"success": true,
 		"message": "Usuario creado correctamente",
-		"data":    user,
+		"data":    userDTO,
 	})
 }
 
@@ -93,16 +99,19 @@ func (c *AdminController) ListUsers(ctx *gin.Context) {
 		return
 	}
 
+	// Convertir usuarios a DTOs para asegurar serialización correcta
+	userDTOs := dto.ToUserDTOs(users)
+
 	// Registrar actividad
 	userValue, _ := ctx.Get("user")
 	user := userValue.(models.Usuario)
 	middleware.LogActivity(ctx, user.ID, "list_users",
-		fmt.Sprintf("Admin visualizó lista de usuarios (total: %d, página: %d)", len(users), page))
+		fmt.Sprintf("Admin visualizó lista de usuarios (total: %d, página: %d)", len(users), page), c.activityLogRepo)
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data": gin.H{
-			"users": users,
+			"users": userDTOs,
 			"pagination": gin.H{
 				"total": total,
 				"page":  page,
@@ -133,11 +142,14 @@ func (c *AdminController) GetUserById(ctx *gin.Context) {
 	adminUser := currentUser.(models.Usuario)
 	middleware.LogActivity(ctx, adminUser.ID, "view_user_details",
 		fmt.Sprintf("Admin consultó detalles del usuario ID: %s, Email: %s, Nombre: %s %s",
-			id, user.Email, user.Nombre, user.Apellido))
+			id, user.Email, user.Nombre, user.Apellido), c.activityLogRepo)
+
+	// Convertir a DTO para asegurar serialización correcta
+	userDTO := dto.ToUserDTO(user)
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"data":    user,
+		"data":    userDTO,
 	})
 }
 
@@ -177,12 +189,15 @@ func (c *AdminController) UpdateUser(ctx *gin.Context) {
 		fmt.Sprintf("Admin actualizó usuario ID: %s, Email: '%s' -> '%s', Nombre: '%s %s' -> '%s %s'",
 			id, oldUser.Email, updatedUser.Email,
 			oldUser.Nombre, oldUser.Apellido,
-			updatedUser.Nombre, updatedUser.Apellido))
+			updatedUser.Nombre, updatedUser.Apellido), c.activityLogRepo)
+
+	// Convertir a DTO para asegurar serialización correcta
+	userDTO := dto.ToUserDTO(updatedUser)
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Usuario actualizado correctamente",
-		"data":    updatedUser,
+		"data":    userDTO,
 	})
 }
 
@@ -215,7 +230,7 @@ func (c *AdminController) DeleteUser(ctx *gin.Context) {
 	// Registrar actividad
 	middleware.LogActivity(ctx, adminUser.ID, "delete_user",
 		fmt.Sprintf("Admin eliminó usuario ID: %s, Email: %s, Nombre: %s %s",
-			id, user.Email, user.Nombre, user.Apellido))
+			id, user.Email, user.Nombre, user.Apellido), c.activityLogRepo)
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -257,7 +272,7 @@ func (c *AdminController) ChangeUserRole(ctx *gin.Context) {
 	adminUser := adminValue.(models.Usuario)
 	middleware.LogActivity(ctx, adminUser.ID, "change_user_role",
 		fmt.Sprintf("Admin cambió rol de usuario ID: %s, Email: %s, Nombre: %s %s, Rol: '%s' -> '%s'",
-			id, updatedUser.Email, updatedUser.Nombre, updatedUser.Apellido, oldUser.Role, updatedUser.Role))
+			id, updatedUser.Email, updatedUser.Nombre, updatedUser.Apellido, oldUser.Role, updatedUser.Role), c.activityLogRepo)
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -267,9 +282,9 @@ func (c *AdminController) ChangeUserRole(ctx *gin.Context) {
 }
 
 // RegisterRoutes registra todas las rutas relacionadas con el panel de administración
-func (c *AdminController) RegisterRoutes(router *gin.Engine) {
+func (c *AdminController) RegisterRoutes(router *gin.Engine, authMiddleware, adminMiddleware gin.HandlerFunc) {
 	admin := router.Group("/api/admin")
-	admin.Use(middleware.AuthMiddleware(), middleware.AdminMiddleware())
+	admin.Use(authMiddleware, adminMiddleware)
 	{
 		admin.POST("/users", c.CreateUser)
 		admin.GET("/users", c.ListUsers)

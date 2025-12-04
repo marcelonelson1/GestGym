@@ -3,7 +3,6 @@ package controllers
 
 import (
 	"curso-platform/dto"
-	"curso-platform/middleware"
 	"curso-platform/models"
 	"curso-platform/services"
 	"curso-platform/utils"
@@ -226,7 +225,7 @@ func (c *AuthController) ResetPassword(ctx *gin.Context) {
 }
 
 // RegisterRoutes registra todas las rutas relacionadas con la autenticación
-func (c *AuthController) RegisterRoutes(router *gin.Engine) {
+func (c *AuthController) RegisterRoutes(router *gin.Engine, authMiddleware gin.HandlerFunc) {
 	auth := router.Group("/api/auth")
 	{
 		auth.POST("/register", c.Register)
@@ -234,10 +233,10 @@ func (c *AuthController) RegisterRoutes(router *gin.Engine) {
 		auth.POST("/forgot-password", c.ForgotPassword)
 		auth.GET("/reset-password/:token/validate", c.ValidateResetToken)
 		auth.POST("/reset-password", c.ResetPassword)
-		auth.GET("/check-admin", middleware.AuthMiddleware(), c.CheckAdmin)
+		auth.GET("/check-admin", authMiddleware, c.CheckAdmin)
 
 		profile := auth.Group("")
-		profile.Use(middleware.AuthMiddleware())
+		profile.Use(authMiddleware)
 		{
 			profile.POST("/refresh-token", c.RefreshToken)
 		}

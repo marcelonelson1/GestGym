@@ -1,8 +1,8 @@
 package middleware
 
 import (
-	"curso-platform/config"
 	"curso-platform/models"
+	"curso-platform/repositories"
 	"curso-platform/utils"
 	"log"
 	"time"
@@ -11,11 +11,12 @@ import (
 )
 
 // LogActivity registra una actividad en el sistema
-func LogActivity(c *gin.Context, userID uint, action, details string) {
+// Recibe ActivityLogRepository por inyección de dependencias
+func LogActivity(c *gin.Context, userID uint, action, details string, activityLogRepo repositories.ActivityLogRepository) {
 	// Obtener IP y User-Agent
 	ip := c.ClientIP()
 	userAgent := c.GetHeader("User-Agent")
-	
+
 	activityLog := models.ActivityLog{
 		UserID:    userID,
 		Action:    action,
@@ -24,14 +25,15 @@ func LogActivity(c *gin.Context, userID uint, action, details string) {
 		UserAgent: userAgent,
 		CreatedAt: time.Now(),
 	}
-	
-	if err := config.DB.Create(&activityLog).Error; err != nil {
+
+	if _, err := activityLogRepo.Create(&activityLog); err != nil {
 		log.Printf("Error al registrar actividad: %v", err)
 	}
 }
 
 // ActivityLogger registra ciertas actividades automáticamente
-func ActivityLogger() gin.HandlerFunc {
+// Recibe ActivityLogRepository por inyección de dependencias
+func ActivityLogger(activityLogRepo repositories.ActivityLogRepository) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Ejecutar el resto de los handlers primero
 		c.Next()
@@ -57,7 +59,7 @@ func ActivityLogger() gin.HandlerFunc {
 					if ok {
 						// Personalizar los detalles según la ruta
 						details := generateActivityDetails(c, path, method, actionType)
-						LogActivity(c, user.ID, actionType, details)
+						LogActivity(c, user.ID, actionType, details, activityLogRepo)
 					}
 				}
 				break

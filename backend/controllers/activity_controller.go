@@ -4,6 +4,7 @@ import (
 	"curso-platform/dto"
 	"curso-platform/middleware"
 	"curso-platform/models"
+	"curso-platform/repositories"
 	"curso-platform/services"
 	"curso-platform/utils"
 	"fmt"
@@ -14,13 +15,15 @@ import (
 
 // ActivityController gestiona las operaciones HTTP relacionadas con actividades
 type ActivityController struct {
-	activityService services.IActivityService
+	activityService  services.IActivityService
+	activityLogRepo  repositories.ActivityLogRepository
 }
 
 // NewActivityController crea una nueva instancia del controlador de actividades
-func NewActivityController(activityService services.IActivityService) *ActivityController {
+func NewActivityController(activityService services.IActivityService, activityLogRepo repositories.ActivityLogRepository) *ActivityController {
 	return &ActivityController{
 		activityService: activityService,
+		activityLogRepo: activityLogRepo,
 	}
 }
 
@@ -105,8 +108,8 @@ func (c *ActivityController) CreateActivity(ctx *gin.Context) {
 	}
 	
 	// Registrar actividad
-	middleware.LogActivity(ctx, user.ID, "create_activity", 
-		fmt.Sprintf("Creó una nueva actividad: %s", activity.Title))
+	middleware.LogActivity(ctx, user.ID, "create_activity",
+		fmt.Sprintf("Creó una nueva actividad: %s", activity.Title), c.activityLogRepo)
 	
 	// Enviar respuesta
 	ctx.JSON(http.StatusCreated, gin.H{
@@ -161,8 +164,8 @@ func (c *ActivityController) UpdateActivity(ctx *gin.Context) {
 	}
 	
 	// Registrar actividad
-	middleware.LogActivity(ctx, user.ID, "update_activity", 
-		fmt.Sprintf("Actualizó la actividad: %s (ID: %d)", activity.Title, activity.ID))
+	middleware.LogActivity(ctx, user.ID, "update_activity",
+		fmt.Sprintf("Actualizó la actividad: %s (ID: %d)", activity.Title, activity.ID), c.activityLogRepo)
 	
 	// Enviar respuesta
 	ctx.JSON(http.StatusOK, gin.H{
@@ -204,8 +207,8 @@ func (c *ActivityController) DeleteActivity(ctx *gin.Context) {
 	}
 	
 	// Registrar actividad
-	middleware.LogActivity(ctx, user.ID, "delete_activity", 
-		fmt.Sprintf("Eliminó la actividad: %s (ID: %d)", activity.Title, activity.ID))
+	middleware.LogActivity(ctx, user.ID, "delete_activity",
+		fmt.Sprintf("Eliminó la actividad: %s (ID: %d)", activity.Title, activity.ID), c.activityLogRepo)
 	
 	// Enviar respuesta
 	ctx.JSON(http.StatusOK, gin.H{
@@ -215,7 +218,7 @@ func (c *ActivityController) DeleteActivity(ctx *gin.Context) {
 }
 
 // RegisterRoutes registra todas las rutas relacionadas con actividades
-func (c *ActivityController) RegisterRoutes(router *gin.Engine) {
+func (c *ActivityController) RegisterRoutes(router *gin.Engine, authMiddleware gin.HandlerFunc, adminMiddleware gin.HandlerFunc) {
 	// Rutas públicas
 	activities := router.Group("/api/activities")
 	{
@@ -225,7 +228,7 @@ func (c *ActivityController) RegisterRoutes(router *gin.Engine) {
 
 	// Rutas de administración (requieren rol de administrador)
 	adminActivities := router.Group("/api/admin/activities")
-	adminActivities.Use(middleware.AuthMiddleware(), middleware.AdminMiddleware())
+	adminActivities.Use(authMiddleware, adminMiddleware)
 	{
 		adminActivities.POST("", c.CreateActivity)
 		adminActivities.PUT("/:id", c.UpdateActivity)

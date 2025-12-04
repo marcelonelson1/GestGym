@@ -23,12 +23,6 @@ func SetupRouter(db *gorm.DB) *gin.Engine {
 	// Configurar CORS
 	setupCORS(router)
 
-	// Middleware global
-	router.Use(middleware.JSONMiddleware())
-	router.Use(middleware.RecoveryMiddleware())
-	router.Use(middleware.ErrorHandler())
-	router.Use(middleware.ActivityLogger())
-
 	// ========================================
 	// INYECCIÓN DE DEPENDENCIAS - REPOSITORIOS
 	// ========================================
@@ -37,6 +31,13 @@ func SetupRouter(db *gorm.DB) *gin.Engine {
 	enrollmentRepo := repositories.NewEnrollmentRepository(db)
 	passwordResetRepo := repositories.NewPasswordResetRepository(db)
 	contactRepo := repositories.NewContactRepository(db)
+	activityLogRepo := repositories.NewActivityLogRepository(db)
+
+	// Middleware global (después de crear repositorios para inyección de dependencias)
+	router.Use(middleware.JSONMiddleware())
+	router.Use(middleware.RecoveryMiddleware())
+	router.Use(middleware.ErrorHandler())
+	router.Use(middleware.ActivityLogger(activityLogRepo))
 
 	// ========================================
 	// INYECCIÓN DE DEPENDENCIAS - SERVICIOS
@@ -71,24 +72,30 @@ func SetupRouter(db *gorm.DB) *gin.Engine {
 	// ContactController: requiere ContactService
 	contactController := controllers.NewContactController(contactService)
 
-	// ActivityController: requiere ActivityService
-	activityController := controllers.NewActivityController(activityService)
+	// ActivityController: requiere ActivityService y ActivityLogRepository
+	activityController := controllers.NewActivityController(activityService, activityLogRepo)
 
-	// EnrollmentController: requiere EnrollmentService
-	enrollmentController := controllers.NewEnrollmentController(enrollmentService)
+	// EnrollmentController: requiere EnrollmentService y ActivityLogRepository
+	enrollmentController := controllers.NewEnrollmentController(enrollmentService, activityLogRepo)
 
-	// AdminController: requiere UserService y AuthService
-	adminController := controllers.NewAdminController(userService, authService)
+	// AdminController: requiere UserService, AuthService y ActivityLogRepository
+	adminController := controllers.NewAdminController(userService, authService, activityLogRepo)
+
+	// ========================================
+	// INYECCIÓN DE DEPENDENCIAS - MIDDLEWARES
+	// ========================================
+	authMiddleware := middleware.AuthMiddleware(userRepo)
+	adminMiddleware := middleware.AdminMiddleware(userRepo)
 
 	// ========================================
 	// REGISTRO DE RUTAS
 	// ========================================
-	authController.RegisterRoutes(router)
-	profileController.RegisterRoutes(router)
-	contactController.RegisterRoutes(router)
-	activityController.RegisterRoutes(router)
-	enrollmentController.RegisterRoutes(router)
-	adminController.RegisterRoutes(router)
+	authController.RegisterRoutes(router, authMiddleware)
+	profileController.RegisterRoutes(router, authMiddleware)
+	contactController.RegisterRoutes(router, authMiddleware, adminMiddleware)
+	activityController.RegisterRoutes(router, authMiddleware, adminMiddleware)
+	enrollmentController.RegisterRoutes(router, authMiddleware)
+	adminController.RegisterRoutes(router, authMiddleware, adminMiddleware)
 
 	// Configurar rutas para archivos estáticos
 	setupStaticRoutes(router)
@@ -127,9 +134,15 @@ func setupStaticRoutes(router *gin.Engine) {
 		filename := c.Param("filename")
 		filepath := "./static/activities/" + filename
 
+		// Si el archivo no existe, intentar servir una imagen por defecto
 		if _, err := os.Stat(filepath); os.IsNotExist(err) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Imagen de actividad no encontrada"})
-			return
+			defaultPath := "./static/activities/default-activity.jpg"
+			if _, err := os.Stat(defaultPath); os.IsNotExist(err) {
+				// Si tampoco existe la imagen por defecto, retornar 404
+				c.JSON(http.StatusNotFound, gin.H{"error": "Imagen de actividad no encontrada"})
+				return
+			}
+			filepath = defaultPath
 		}
 
 		c.Header("Cache-Control", "public, max-age=31536000")

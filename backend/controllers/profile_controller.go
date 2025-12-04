@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"curso-platform/dto"
-	"curso-platform/middleware"
 	"curso-platform/models"
 	"curso-platform/services"
 	"curso-platform/utils"
@@ -42,9 +41,12 @@ func (c *ProfileController) GetProfile(ctx *gin.Context) {
 		return
 	}
 
+	// Convertir a DTO para asegurar serialización correcta con tags JSON
+	userDTO := dto.ToUserDTO(&user)
+
 	ctx.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"user":    user,
+		"user":    userDTO,
 	})
 }
 
@@ -190,9 +192,9 @@ func (c *ProfileController) UpdateNotificationSettings(ctx *gin.Context) {
 }
 
 // RegisterRoutes registra todas las rutas relacionadas con el perfil
-func (c *ProfileController) RegisterRoutes(router *gin.Engine) {
+func (c *ProfileController) RegisterRoutes(router *gin.Engine, authMiddleware gin.HandlerFunc) {
 	profile := router.Group("/api/auth/profile")
-	profile.Use(middleware.AuthMiddleware())
+	profile.Use(authMiddleware)
 	{
 		profile.GET("", c.GetProfile)
 		profile.PUT("", c.UpdateProfile)

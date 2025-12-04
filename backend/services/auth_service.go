@@ -65,7 +65,7 @@ func (s *AuthService) Register(req dto.RegisterRequest) error {
 }
 
 // Login inicia sesión de un usuario
-func (s *AuthService) Login(req dto.LoginRequest) (*models.AuthResponse, error) {
+func (s *AuthService) Login(req dto.LoginRequest) (*dto.AuthResponseDTO, error) {
 	// Buscar usuario por email
 	user, err := s.userRepo.FindByEmail(req.Email)
 	if err != nil {
@@ -93,16 +93,16 @@ func (s *AuthService) Login(req dto.LoginRequest) (*models.AuthResponse, error) 
 		return nil, errors.New("error al generar token")
 	}
 
-	// No enviar la contraseña en la respuesta
-	user.Password = ""
-
 	// Actualizar last_login en la instancia local para devolverla en la respuesta
 	user.LastLogin = now
 
-	// Preparar respuesta
-	response := &models.AuthResponse{
+	// Convertir a DTO (la conversión automáticamente excluye el password)
+	userDTO := dto.ToUserDTO(user)
+
+	// Preparar respuesta usando DTO
+	response := &dto.AuthResponseDTO{
 		Token: token,
-		User:  *user,
+		User:  *userDTO,
 	}
 
 	return response, nil
@@ -114,7 +114,7 @@ func (s *AuthService) RefreshToken(userID uint, role string) (string, error) {
 }
 
 // ChangeUserRole cambia el rol de un usuario
-func (s *AuthService) ChangeUserRole(userID uint, newRole string) (*models.Usuario, error) {
+func (s *AuthService) ChangeUserRole(userID uint, newRole string) (*dto.UserDTO, error) {
 	// Verificar que el usuario existe
 	user, err := s.userRepo.FindByID(userID)
 	if err != nil {
@@ -140,10 +140,8 @@ func (s *AuthService) ChangeUserRole(userID uint, newRole string) (*models.Usuar
 		return nil, utils.ErrDatabaseError
 	}
 
-	// No enviar contraseña
-	updatedUser.Password = ""
-
-	return updatedUser, nil
+	// Convertir a DTO (automáticamente excluye el password)
+	return dto.ToUserDTO(updatedUser), nil
 }
 
 // ChangePassword cambia la contraseña de un usuario

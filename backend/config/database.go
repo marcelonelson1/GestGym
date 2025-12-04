@@ -13,11 +13,9 @@ import (
 	"gorm.io/gorm/logger"
 )
 
-// DB es la instancia global de la base de datos
-var DB *gorm.DB
-
 // SetupDatabase configura la conexión a la base de datos y la devuelve
 func SetupDatabase() *gorm.DB {
+	var db *gorm.DB
 	var err error
 	maxRetries := 5
 	retryDelay := 5 * time.Second
@@ -37,12 +35,12 @@ func SetupDatabase() *gorm.DB {
 			dbName)
 
 		// Utilizamos el driver de MySQL, que también es compatible con MariaDB
-		DB, err = gorm.Open(mysql.Open(dsn), &gorm.Config{
+		db, err = gorm.Open(mysql.Open(dsn), &gorm.Config{
 			Logger: logger.Default.LogMode(logger.Info),
 		})
 
 		if err == nil {
-			sqlDB, err := DB.DB()
+			sqlDB, err := db.DB()
 			if err != nil {
 				log.Fatalf("Error al obtener instancia DB: %v", err)
 			}
@@ -53,7 +51,7 @@ func SetupDatabase() *gorm.DB {
 			sqlDB.SetConnMaxLifetime(time.Hour)
 
 			log.Println("Conexión a MariaDB establecida correctamente")
-			return DB
+			return db
 		}
 
 		log.Printf("Error de conexión: %v. Reintentando en %v...", err, retryDelay)

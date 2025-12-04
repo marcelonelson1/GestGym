@@ -1,8 +1,8 @@
 package middleware
 
 import (
-	"curso-platform/config"
 	"curso-platform/models"
+	"curso-platform/repositories"
 	"curso-platform/utils"
 	"log"
 	"net/http"
@@ -12,7 +12,8 @@ import (
 )
 
 // AuthMiddleware verifica si el usuario está autenticado mediante un token JWT
-func AuthMiddleware() gin.HandlerFunc {
+// Recibe UserRepository por inyección de dependencias
+func AuthMiddleware(userRepo repositories.UserRepository) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Obtener el token del encabezado de autorización
 		authHeader := c.GetHeader("Authorization")
@@ -37,9 +38,9 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// Verificar si el usuario existe en la base de datos
-		var user models.Usuario
-		if result := config.DB.First(&user, claims.UserID); result.Error != nil {
+		// Verificar si el usuario existe en la base de datos usando el repository
+		user, err := userRepo.FindByID(claims.UserID)
+		if err != nil || user == nil {
 			utils.SendErrorResponse(c, utils.ErrUserNotFound, http.StatusUnauthorized)
 			return
 		}
@@ -52,14 +53,15 @@ func AuthMiddleware() gin.HandlerFunc {
 		}
 
 		// Añadir el usuario al contexto para que los controladores puedan acceder a él
-		c.Set("user", user)
+		c.Set("user", *user)
 
 		c.Next()
 	}
 }
 
 // AdminMiddleware verifica si el usuario autenticado tiene rol de administrador
-func AdminMiddleware() gin.HandlerFunc {
+// Recibe UserRepository por inyección de dependencias
+func AdminMiddleware(userRepo repositories.UserRepository) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Obtener el usuario del contexto (establecido por AuthMiddleware)
 		userValue, exists := c.Get("user")
@@ -85,10 +87,10 @@ func AdminMiddleware() gin.HandlerFunc {
 		}
 
 		// Verificar adicionalmente en la base de datos para asegurar que el rol no ha cambiado
-		var dbUser models.Usuario
-		if result := config.DB.Select("role").First(&dbUser, user.ID); result.Error != nil {
+		dbUser, err := userRepo.FindByID(user.ID)
+		if err != nil || dbUser == nil {
 			log.Printf("Error al verificar rol en DB para usuario ID: %d (%s %s): %v",
-				user.ID, user.Nombre, user.Apellido, result.Error)
+				user.ID, user.Nombre, user.Apellido, err)
 			utils.SendErrorResponse(c, utils.ErrServerError, http.StatusInternalServerError)
 			return
 		}

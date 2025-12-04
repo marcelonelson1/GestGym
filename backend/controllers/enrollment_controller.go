@@ -3,6 +3,7 @@ package controllers
 import (
 	"curso-platform/middleware"
 	"curso-platform/models"
+	"curso-platform/repositories"
 	"curso-platform/services"
 	"curso-platform/utils"
 	"fmt"
@@ -15,12 +16,14 @@ import (
 // EnrollmentController gestiona las operaciones de inscripción a actividades
 type EnrollmentController struct {
 	enrollmentService services.IEnrollmentService
+	activityLogRepo   repositories.ActivityLogRepository
 }
 
 // NewEnrollmentController crea una nueva instancia del controlador de inscripciones
-func NewEnrollmentController(enrollmentService services.IEnrollmentService) *EnrollmentController {
+func NewEnrollmentController(enrollmentService services.IEnrollmentService, activityLogRepo repositories.ActivityLogRepository) *EnrollmentController {
 	return &EnrollmentController{
 		enrollmentService: enrollmentService,
+		activityLogRepo:   activityLogRepo,
 	}
 }
 
@@ -55,8 +58,8 @@ func (c *EnrollmentController) Enroll(ctx *gin.Context) {
 	}
 
 	// Registrar actividad en el log
-	middleware.LogActivity(ctx, user.ID, "enrollment", 
-		fmt.Sprintf("Usuario se inscribió en la actividad ID: %d", activityID))
+	middleware.LogActivity(ctx, user.ID, "enrollment",
+		fmt.Sprintf("Usuario se inscribió en la actividad ID: %d", activityID), c.activityLogRepo)
 
 	utils.SendSuccessResponse(ctx, gin.H{
 		"message":    "Inscripción exitosa",
@@ -146,7 +149,7 @@ func (c *EnrollmentController) CancelEnrollment(ctx *gin.Context) {
 
 	// Registrar actividad en el log
 	middleware.LogActivity(ctx, user.ID, "enrollment_cancel",
-		fmt.Sprintf("Usuario canceló su inscripción en la actividad ID: %d", activityID))
+		fmt.Sprintf("Usuario canceló su inscripción en la actividad ID: %d", activityID), c.activityLogRepo)
 
 	utils.SendSuccessResponse(ctx, gin.H{
 		"message": "Inscripción cancelada exitosamente",
@@ -154,9 +157,9 @@ func (c *EnrollmentController) CancelEnrollment(ctx *gin.Context) {
 }
 
 // RegisterRoutes registra las rutas para el controlador de inscripciones
-func (c *EnrollmentController) RegisterRoutes(router *gin.Engine) {
+func (c *EnrollmentController) RegisterRoutes(router *gin.Engine, authMiddleware gin.HandlerFunc) {
 	enrollment := router.Group("/api/enrollments")
-	enrollment.Use(middleware.AuthMiddleware())
+	enrollment.Use(authMiddleware)
 	{
 		enrollment.POST("/:id", c.Enroll)
 		enrollment.DELETE("/:id", c.CancelEnrollment)

@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"curso-platform/dto"
-	"curso-platform/middleware"
 	"curso-platform/services"
 	"curso-platform/utils"
 	"net/http"
@@ -133,13 +132,13 @@ func (c *ContactController) ReplyToMessage(ctx *gin.Context) {
 }
 
 // RegisterRoutes registra todas las rutas relacionadas con los mensajes de contacto
-func (c *ContactController) RegisterRoutes(router *gin.Engine) {
+func (c *ContactController) RegisterRoutes(router *gin.Engine, authMiddleware gin.HandlerFunc, adminMiddleware gin.HandlerFunc) {
 	// Ruta pública para enviar mensajes de contacto
 	router.POST("/api/contact", c.ContactHandler)
 
 	// Rutas protegidas para administrar mensajes (solo admin)
 	admin := router.Group("/api/admin/messages")
-	admin.Use(middleware.AuthMiddleware(), middleware.AdminMiddleware())
+	admin.Use(authMiddleware, adminMiddleware)
 	{
 		admin.GET("", c.GetContactMessages)
 		admin.GET("/:id", c.GetContactMessage)
