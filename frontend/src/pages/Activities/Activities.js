@@ -5,6 +5,7 @@ import { FaSearch, FaFilter, FaClock, FaUsers, FaDumbbell, FaCalendarAlt, FaUser
 import { useAuth } from '../../context/AuthContext';
 import activityService from '../../api/activityService';
 import enrollmentService from '../../api/enrollmentService';
+import config from '../../config';
 import './Activities.css';
 
 const Activities = () => {
@@ -301,10 +302,9 @@ const Activities = () => {
       if (imageField.startsWith('http')) {
         return imageField;
       }
-      // Si es una ruta relativa, usar la misma origin (Nginx hará proxy al backend)
+      // Si es una ruta relativa, construir URL completa con IMAGE_BASE_URL
       // El backend devuelve rutas como "/static/activities/imagen.png"
-      // Nginx en puerto 3000 hará proxy de /static/ al backend:5000
-      return imageField;
+      return `${config.IMAGE_BASE_URL}${imageField}`;
     }
     return null;
   };

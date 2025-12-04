@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FaArrowRight, FaCalendarAlt, FaUsers, FaTrophy, FaCheckCircle, FaDumbbell, FaRunning, FaHeart, FaUser, FaClock } from 'react-icons/fa';
 import activityService from '../../api/activityService';
+import config from '../../config';
 import './Home.css';
 
 const Home = () => {
@@ -27,6 +28,23 @@ const Home = () => {
     'Ambiente motivador',
     'Resultados garantizados'
   ];
+
+  // Función para obtener la URL completa de la imagen
+  const getImageUrl = (activity) => {
+    // Intentar obtener image_url de diferentes campos posibles
+    const imageField = activity.image_url || activity.imageUrl || activity.ImageUrl;
+
+    if (imageField) {
+      // Si la URL ya es completa (incluye http), usarla directamente
+      if (imageField.startsWith('http')) {
+        return imageField;
+      }
+      // Si es una ruta relativa, construir URL completa con IMAGE_BASE_URL
+      // El backend devuelve rutas como "/static/activities/imagen.png"
+      return `${config.IMAGE_BASE_URL}${imageField}`;
+    }
+    return null;
+  };
 
   // Cargar actividades al montar el componente
   useEffect(() => {
@@ -182,18 +200,26 @@ const Home = () => {
             <div className="activities-preview">
               {activities.length > 0 ? (
                 <div className="activities-grid-preview">
-                  {activities.map((activity) => (
+                  {activities.map((activity) => {
+                    const imageUrl = getImageUrl(activity);
+                    return (
                     <div key={activity.id} className="activity-preview-card">
                       <div className="activity-preview-image">
-                        {activity.image_url ? (
-                          <img src={activity.image_url} alt={activity.title} />
-                        ) : (
-                          <div className="preview-placeholder">
-                            <FaDumbbell className="preview-icon" />
-                          </div>
-                        )}
+                        {imageUrl ? (
+                          <img
+                            src={imageUrl}
+                            alt={activity.title}
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              e.target.nextSibling.style.display = 'flex';
+                            }}
+                          />
+                        ) : null}
+                        <div className="activity-preview-placeholder" style={{ display: imageUrl ? 'none' : 'flex' }}>
+                          <FaDumbbell />
+                        </div>
                         {activity.category && (
-                          <div className="preview-category">{activity.category}</div>
+                          <div className="activity-preview-category">{activity.category}</div>
                         )}
                       </div>
                       
@@ -223,15 +249,16 @@ const Home = () => {
                           )}
                         </div>
                         
-                        <Link 
-                          to={`/activities/${activity.id}`} 
+                        <Link
+                          to={`/activities/${activity.id}`}
                           className="preview-button"
                         >
                           Ver Detalles
                         </Link>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="no-activities-preview">

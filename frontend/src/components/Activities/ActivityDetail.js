@@ -69,9 +69,23 @@ const ActivityDetail = ({
   }
 
   // Formatear la URL de la imagen
-  const imageUrl = activity.imageUrl 
-    ? `${config.IMAGE_BASE_URL}/${activity.imageUrl}` 
-    : config.DEFAULT_ACTIVITY_IMAGE;
+  const getImageUrl = () => {
+    // Intentar obtener image_url de diferentes campos posibles
+    const imageField = activity.image_url || activity.imageUrl || activity.ImageUrl;
+
+    if (imageField) {
+      // Si la URL ya es completa (incluye http), usarla directamente
+      if (imageField.startsWith('http')) {
+        return imageField;
+      }
+      // Si es una ruta relativa, construir URL completa con IMAGE_BASE_URL
+      // El backend devuelve rutas como "/static/activities/imagen.png"
+      return `${config.IMAGE_BASE_URL}${imageField}`;
+    }
+    return config.DEFAULT_ACTIVITY_IMAGE;
+  };
+
+  const imageUrl = getImageUrl();
 
   // Formatear categoría para mostrar
   const formatCategory = (category) => {

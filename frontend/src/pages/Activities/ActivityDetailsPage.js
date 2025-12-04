@@ -17,7 +17,12 @@ const ActivityDetailsPage = () => {
   const [error, setError] = useState(null);
   const [isEnrolled, setIsEnrolled] = useState(false);
   const [enrollments, setEnrollments] = useState([]);
-  
+
+  // Scroll al inicio cuando se monta el componente
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   // Cargar actividad al montar el componente o cambiar el ID
   useEffect(() => {
     const fetchActivityDetails = async () => {

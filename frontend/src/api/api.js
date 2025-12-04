@@ -17,8 +17,8 @@ const api = axios.create({
 // Interceptor para añadir token a las peticiones
 api.interceptors.request.use(
   config => {
-    // USAR 'token' en lugar de 'auth_token' para consistencia
-    const token = localStorage.getItem('token');
+    // IMPORTANTE: usar 'auth_token' que es la key que usa authService
+    const token = localStorage.getItem('auth_token');
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
     }
@@ -86,8 +86,8 @@ api.interceptors.response.use(
         
         // Solo limpiar localStorage, NO redirigir automáticamente
         // El AuthContext debería manejar la redirección
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('user_data');
         
         // Marcar que hay un problema de auth pero no redirigir aquí
         // para evitar conflictos con el AuthContext

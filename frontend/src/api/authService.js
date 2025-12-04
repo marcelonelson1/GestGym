@@ -6,6 +6,9 @@ const TOKEN_KEY = 'auth_token';
 const USER_KEY = 'user_data';
 const TOKEN_EXPIRY_KEY = 'token_expiry';
 
+// MIGRACIÓN AUTOMÁTICA: Mover token de 'token' a 'auth_token' si existe
+
+
 const authService = {
   // Iniciar sesión
   login: async (email, password) => {
